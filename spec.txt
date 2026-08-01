@@ -1,0 +1,96 @@
+tpt-chrysalis: System Design Document (SDD)
+Version: 1.0.0
+Status: Draft / Architecture Proposal
+Domain: Autonomous Science, Microphysiological Systems (MPS), Lab Robotics, Active Learning
+Target Audience: Translational Researchers, Bioengineers, Pharmaceutical R&D, Automated Lab Architects
+1. Executive Summary
+tpt-chrysalis is the physical-digital bridge of the tpt ecosystem. While tpt-soma and tpt-cerebrum provide mathematically rigorous in silico models of the body and brain, the most expensive and lethal bottleneck in biomedical research is the "Valley of Death": the transition from computational hypothesis to physical, in vitro or in vivo validation.
+Animal models are exorbitantly expensive, ethically fraught, and suffer from poor human translational success rates. Manual wet-lab workflows are slow, error-prone, and difficult to scale.
+tpt-chrysalis solves this by acting as an autonomous, formally verified orchestration platform for Microphysiological Systems (MPS), Organ-on-a-Chip (OoC) arrays, and cloud-connected lab robotics. It closes the loop between digital simulation and physical reality, using local, symbolic AI to design, execute, and analyze only the most mathematically informative physical experiments, slashing pre-clinical validation time and cost by orders of magnitude.
+2. Core Philosophy & First Principles
+Physical Determinism: A memory leak in a web app is an annoyance; a race condition in a liquid handler dispensing cytotoxic agents is a catastrophic failure. Physical actuation requires microsecond precision and absolute reliability.
+Symbolic Safety Constraints: Autonomous AI must never be allowed to "hallucinate" a physically dangerous or chemically impossible protocol. Hard, mathematically verified boundaries must govern all physical actions.
+Capability-Based Physical Control: Access to physical hardware is not granted by software roles, but by cryptographically verified capability tokens. A compromised software process cannot open a biohazard seal or override a temperature limit without the explicit, unforgeable token.
+The Closed-Loop Organism: The ultimate goal is to replace systemic animal models with linked, human-cell-based microphysiological systems (e.g., Gut-Chip → Liver-Chip → Blood-Brain-Barrier-Chip) that mimic whole-body pharmacokinetics and pharmacodynamics.
+3. The Conceptual Model: The Physical-Digital State Graph (PDSG)
+To bridge the digital and physical worlds, tpt-chrysalis maintains a real-time, synchronized graph: the Physical-Digital State Graph (PDSG).
+Digital Intent Nodes: The desired experimental parameters derived from tpt-soma/tpt-cerebrum (e.g., "Expose Hepatocyte Cluster A to 10µM Compound X for 4 hours").
+Physical Actuator Nodes: The hardware components required to execute the intent (e.g., "Tecan Fluent Pump 3", "Microfluidic Valve V4", "Incubator Temp Controller").
+Sensor/Observer Nodes: The real-time data streams validating the execution (e.g., "TEER impedance sensor", "High-content fluorescence microscope", "pH probe").
+Edges (Causality & Flow): The verified, deterministic pathways linking intent to actuation to observation, governed by strict temporal and logical constraints.
+4. System Architecture
+Layer 1: The Edge Actuation & Sensor Layer (no_std Rust / tpt-crucible)
+Function: Ultra-low-latency, deterministic control of physical hardware.
+Components:
+Formally Verified HAL: Hardware Abstraction Layers written in no_std Rust, utilizing the formal verification methodologies of tpt-telos and tpt-flight-control to mathematically prove the absence of buffer overflows, race conditions, or uninitialized memory in physical control loops.
+FPGA/Photonic Compilation: Experimental orchestration logic is compiled directly to FPGAs or photonic meshes via tpt-crucible. This bypasses non-deterministic OS-level scheduling, guaranteeing microsecond-precise synchronization between, for example, a microfluidic valve opening and a high-speed camera triggering.
+Layer 2: The Chrysalis Core (tpt-archon)
+Function: The proof-native foundation for state management, storage, and access control.
+Components:
+Capability-Based Microkernel: Every physical command (e.g., dispense(reagent, volume)) requires a cryptographically signed capability token. The kernel enforces this at the lowest level, preventing unauthorized or malformed physical actions.
+Immutable Audit Ledger: Every sensor reading, actuator movement, and environmental condition is logged in a zero-copy, append-only ledger. This provides mathematical proof of experimental integrity for FDA/regulatory submissions.
+Layer 3: The Autonomous Reasoning Engine (tpt-anima + tpt-eve)
+Function: Local, offline-first AI that designs the next best experiment and enforces safety.
+Components:
+Active Learning Agent (tpt-anima): A zero-legacy AI runtime that uses Bayesian Optimization and Reinforcement Learning to analyze sensor data and propose the next experimental protocol that maximally reduces uncertainty in the tpt-soma Digital Twin.
+Symbolic Constraint Checker (tpt-eve): Before any protocol is compiled to hardware, tpt-eve evaluates it against a knowledge graph of hard biological and chemical constraints (e.g., "IF reagent_A AND reagent_B THEN temperature MUST BE < 4°C ELSE abort"). If the symbolic check fails, the physical execution is mathematically blocked.
+Layer 4: The Researcher Interface & Harmonization
+Function: Bridging the physical lab output back to the digital research ecosystem.
+Components:
+Protocol Designer: A visual, node-based interface for researchers to define experimental workflows, which are then compiled into formally verified machine code.
+3D visualization of Organ-on-a-Chip arrays synchronized with real-time sensor data.
+FHIR R5 Harmonization: Physical assay results (e.g., cytokine levels from a chip) are automatically mapped to FHIR R5 Observation and Specimen resources, ensuring seamless ingestion into tpt-soma and compliance with NZ HIPC 2020 / HIPAA standards.
+5. Domain Modules
+A. tpt-chrysalis-orchestrator (Hardware Abstraction & Control)
+Function: The universal translator between biological intent and physical machine action.
+Features: Formally verified drivers for major lab robotics (Hamilton, Tecan), microfluidic controllers, and environmental chambers. Manages resource locking to prevent physical collisions or reagent cross-contamination.
+B. tpt-chrysalis-organoid (Microphysiological Systems / Organ-on-a-Chip)
+Function: The software layer specifically designed to manage human-cell-based OoC systems.
+Features:
+Multi-Organ Linking: Controls the microfluidic "blood" flow connecting disparate chips (e.g., Pancreas → Liver → Blood-Brain-Barrier), replacing systemic animal models with human-relevant physiology.
+Patient-Derived Organoids (PDOs): Workflows for rapidly screening a cancer patient's biopsy on a chip to identify the exact effective therapy before clinical administration.
+C. tpt-chrysalis-active (The AI Experimental Designer)
+Function: The cognitive engine that decides what to test next.
+Features: Instead of brute-forcing 10,000 random drug combinations, it uses Active Learning. If the goal is to maximize tumor spheroid death while minimizing cardiomyocyte toxicity, tpt-chrysalis-active calculates the exact next concentration and timing that will maximally reduce model uncertainty, reducing reagent costs and time by 10x to 100x.
+D. tpt-chrysalis-vision (High-Content Imaging & Phenotypic Analysis)
+Function: Real-time, edge-computed analysis of microscopic physical changes.
+Features: Local computer vision models that track cell morphology, neurite outgrowth (for tpt-cerebrum neurotoxicity studies), or barrier integrity (TEER) in real-time, feeding structured, time-series data directly back into the PDSG.
+E. tpt-chrysalis-compliance (Regulatory & Data Harmonization)
+Function: Ensuring the physical lab meets the highest standards of data integrity and privacy.
+Features: Automated generation of ALCOA+ (Attributable, Legible, Contemporaneous, Original, Accurate) compliance reports. Native de-identification of patient-derived cell line metadata in accordance with NZ HIPC 2020 and GDPR before any data leaves the local facility.
+6. Security, Safety, and "Physical Proof-Native" Compliance
+In tpt-chrysalis, security is not just about data privacy; it is about physical safety and experimental integrity.
+Hardware Capability Tokens: A software bug or malicious actor cannot command a robotic arm to move or a heater to activate without presenting a valid, cryptographically signed capability token issued by the tpt-archon microkernel.
+Symbolic Execution Guards (tpt-eve): Every generated experimental protocol is symbolically executed against a formal model of the lab's physical constraints before compilation. This mathematically guarantees that no protocol can violate safety limits (e.g., exceeding pressure limits in a microfluidic chip).
+Air-Gapped Local AI: The tpt-anima active learning loop runs entirely offline on local, self-hosted hardware. Sensitive experimental protocols and patient-derived organoid data never traverse the public internet, satisfying strict NZISM and institutional IP protection policies.
+it prevents data exfiltration and ensures deterministic performance.
+7. Technology Stack (Strict tpt Ecosystem Alignment)
+Hardware Control & Compilation: tpt-crucible (compiling orchestration logic to FPGAs/photonic meshes for deterministic, zero-jitter actuation).
+Core Kernel & Security: tpt-archon (capability-based user-space microkernel, zero-copy storage, immutable audit logging).
+Formal Verification: tpt-telos / tpt-flight-control methodologies applied to the no_std Rust Hardware Abstraction Layer (HAL) to guarantee memory safety and absence of runtime panics.
+Autonomous Reasoning: tpt-anima (local, zero-legacy AI runtime for active learning) + tpt-eve (symbolic reasoning augmentation for hard safety constraint checking).
+Data Standards: FHIR R5, OMOP CDM, and NZ HIPC 2020 / HIPAA compliance for harmonizing physical assay data back into the tpt-soma / tpt-cerebrum digital twins.
+Frontend: Rust/Wasm for high-performance, real-time visualization of microfluidic states and high-content imaging.
+8. Phased Delivery Roadmap
+Phase 1: The Deterministic Wedge (Months 1-6)
+Focus: tpt-chrysalis-orchestrator and tpt-chrysalis-compliance.
+Deliverable: A formally verified, no_std Rust hardware abstraction layer for a single, common piece of lab equipment (e.g., an automated liquid handler or microfluidic pump), governed by tpt-archon capability tokens and audited via immutable ledgers.
+Goal: Prove that tpt's first-principles, memory-safe approach can reliably and safely control physical lab hardware with zero runtime errors.
+Phase 2: The Microphysiological Expansion (Months 7-12)
+Focus: tpt-chrysalis-organoid and tpt-chrysalis-vision.
+Deliverable: Integration of Organ-on-a-Chip systems. Real-time, edge-computed computer vision (tpt-chrysalis-vision) monitoring of cell health, synchronized with microfluidic control.
+Goal: Replace a specific, expensive animal model (e.g., basic hepatotoxicity screening) with a human-cell-based, automated OoC workflow.
+Phase 3: The Autonomous Closed Loop (Months 13-18)
+Focus: tpt-chrysalis-active (tpt-anima + tpt-eve).
+Deliverable: Deployment of the local AI experimental designer. The system can now receive a high-level goal (e.g., "Optimize dose of Compound Y for maximal efficacy, minimal toxicity"), symbolically verify the search space, and autonomously run the Bayesian optimization loop on the hardware.
+Goal: Demonstrate a 10x reduction in reagent use and time-to-result compared to manual, grid-search experimental design.
+Phase 4: The Whole-Body Physical Twin (Months 19-24+)
+Focus: Multi-organ linking and deep tpt-soma/tpt-cerebrum integration.
+Deliverable: Linking multiple OoC systems (e.g., Gut, Liver, Brain) via microfluidics to simulate systemic pharmacokinetics. Physical assay data is automatically harmonized (FHIR R5) and fed back to update the tpt-soma Digital Twin, which then proposes the next physical experiment.
+Goal: Achieve the ultimate vision: a fully autonomous, closed-loop, human-relevant pre-clinical validation engine.
+9. Conclusion & The Unified tpt Ecosystem
+tpt-chrysalis is the missing link that transforms tpt-soma and tpt-cerebrum from brilliant theoretical models into engines of tangible, physical discovery.
+tpt-soma provides the Map (the digital model of systemic physiology).
+tpt-cerebrum provides the Control Center (the digital model of neural regulation).
+tpt-chrysalis provides the Engine (the physically verified, autonomous validation of those models in living human tissue).
+By leveraging tpt-crucible for deterministic hardware control, tpt-archon for capability-based physical security, and tpt-anima/tpt-eve for safe, local autonomous reasoning, tpt-chrysalis does not just automate the lab—it mathematically guarantees its safety, integrity, and unprecedented efficiency. This is the definitive infrastructure for the future of translational medicine.
