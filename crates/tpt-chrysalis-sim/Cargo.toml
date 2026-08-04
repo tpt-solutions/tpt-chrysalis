@@ -1,0 +1,23 @@
+[package]
+name = "tpt-chrysalis-sim"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Simulated hardware backend implementing the tpt-chrysalis HAL traits (simulation-first strategy)"
+
+[dependencies]
+tpt-chrysalis-hal.workspace = true
+
+[dev-dependencies]
+criterion = "0.5"
+# The actuation-latency bench uses the host wall-clock (`SimInstant`), which
+# needs the HAL's `std` feature.
+tpt-chrysalis-hal = { workspace = true, features = ["std"] }
+
+[[bench]]
+name = "actuation_latency"
+harness = false

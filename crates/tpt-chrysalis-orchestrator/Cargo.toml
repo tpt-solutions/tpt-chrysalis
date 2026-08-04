@@ -1,0 +1,22 @@
+[package]
+name = "tpt-chrysalis-orchestrator"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Per spec §5A: resource locking, protocol compilation to the HAL, capability-gated execution, audit + PDSG wiring"
+
+[dependencies]
+tpt-archon-bridge = { workspace = true, features = ["std"] }
+tpt-archon-kernel = { workspace = true, features = ["std"] }
+tpt-chrysalis-core.workspace = true
+tpt-chrysalis-hal.workspace = true
+tpt-chrysalis-safety.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tpt-chrysalis-sim.workspace = true
+tpt-chrysalis-compliance.workspace = true

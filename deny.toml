@@ -1,0 +1,47 @@
+# cargo-deny configuration (audited by `just deny`, matching ecosystem
+# convention). The phase-0 priority is auditing the `no_std` HAL path for
+# transitive deps that would silently pull `alloc`/`std` into firmware.
+[advisories]
+version = 2
+vulnerability = "deny"
+unmaintained = "warn"
+yanked = "deny"
+notice = "warn"
+
+[licenses]
+version = 2
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "MIT-0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+]
+confidence-threshold = 0.8
+
+[bans]
+version = 2
+multiple-versions = "warn"
+# The HAL crate must stay `no_std` + zero-allocation and dependency-free
+# (trait surface only); keep a hard ban on anything pulling alloc into it.
+# List of crates that must never become runtime deps of tpt-chrysalis-hal:
+skip-tree = [
+    # Verification harness only (excluded from the workspace) - keep it out of
+    # the shippable HAL dependency graph entirely.
+    { name = "tpt-telos-verifier" },
+    { name = "tpt-telos-ir" },
+    { name = "tpt-telos-parser" },
+]
+
+[sources]
+version = 2
+unknown-registry = "warn"
+unknown-git = "deny"
+allow-git = [
+    "https://github.com/tpt-solutions/tpt-eidos",
+    "https://github.com/tpt-solutions/tpt-telos",
+    "https://github.com/tpt-solutions/tpt-gpu",
+]

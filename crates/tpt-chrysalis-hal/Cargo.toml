@@ -1,0 +1,22 @@
+[package]
+name = "tpt-chrysalis-hal"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "no_std Hardware Abstraction Layer: deterministic actuator/sensor traits for the tpt-chrysalis control-loop critical path"
+
+[features]
+default = []
+# `std` is only needed to drive the timing harness on a host; the trait surface
+# itself is fully `no_std` and zero-allocation.
+std = []
+
+[dependencies]
+# Intentionally empty: the HAL is a pure trait surface so it stays
+# `cargo publish --dry-run`-clean and free of any transitive dep that could
+# pull `alloc`/`std` into firmware. Formal-verification annotations live in
+# the non-published `crates/out-chrysalis-verify` harness (see ADR 0002).

@@ -1,0 +1,6 @@
+# Workspace clippy configuration.
+#
+# `tpt-chrysalis-hal` and the control-loop critical path must stay
+# `-D warnings`-clean; these lints reflect that posture. Crates may tighten
+# locally but must not loosen workspace-wide defaults.
+msrv = "1.85"

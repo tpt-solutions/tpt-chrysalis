@@ -1,0 +1,20 @@
+[package]
+name = "tpt-chrysalis-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "PDSG node/edge model, capability-token security, and hash-chained audit ledger built on tpt-archon"
+
+[dependencies]
+tpt-archon-core = { workspace = true, features = ["std"] }
+tpt-archon-bridge = { workspace = true, features = ["std"] }
+tpt-archon-kernel = { workspace = true, features = ["std"] }
+tpt-archon-relational = { workspace = true, features = ["std"] }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true

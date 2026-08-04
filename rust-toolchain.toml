@@ -1,0 +1,8 @@
+[toolchain]
+channel = "1.97.1"
+components = ["rustfmt", "clippy"]
+# Targets used by the workspace. `thumbv7em-none-eabihf` is the real-HAL
+# control-loop target exercised by CI for `tpt-chrysalis-hal`; add
+# `wasm32-unknown-unknown` via `rustup target add wasm32-unknown-unknown`
+# before building the frontend.
+targets = ["thumbv7em-none-eabihf", "riscv32imc-unknown-none-elf"]

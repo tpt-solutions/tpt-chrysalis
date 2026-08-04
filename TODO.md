@@ -7,9 +7,9 @@ Tracking checklist for the full 4-phase roadmap defined in `spec.txt` (v1.0.0). 
 ## Phase 0 — Monorepo Foundational Setup (blocks all of Phase 1)
 
 ### Repo & workspace layout
-- [ ] `git init`, `.gitignore` (Rust `target/`, Wasm `pkg/`/`dist/`, `.env`, MinIO local volumes, simulator fixture output)
-- [ ] Cargo workspace root `Cargo.toml` with member crates: `tpt-chrysalis-core` (PDSG graph model + data-access layer), `tpt-chrysalis-hal` (`no_std` actuator/sensor Hardware Abstraction Layer), `tpt-chrysalis-sim` (simulated hardware backend implementing the HAL's traits), `tpt-chrysalis-safety` (deterministic symbolic constraint/safety-gate engine), `tpt-chrysalis-orchestrator` (per spec §5A — resource locking, protocol compilation to the HAL), `tpt-chrysalis-compliance` (per spec §5E — ALCOA+ reports, de-identification), `tpt-chrysalis-api` (backend service tying the above together), plus placeholder crates for `tpt-chrysalis-organoid` (§5B), `tpt-chrysalis-vision` (§5D), `tpt-chrysalis-active` (§5C) matching spec §5's module names exactly for later phases
-- [ ] `rust-toolchain.toml` pin, workspace `rustfmt.toml`, `clippy.toml`, `deny.toml` (cargo-deny — audit `no_std` crates specifically for `alloc`-pulling transitive deps)
+- [x] `git init`, `.gitignore` (Rust `target/`, Wasm `pkg/`/`dist/`, `.env`, MinIO local volumes, simulator fixture output)
+- [x] Cargo workspace root `Cargo.toml` with member crates: `tpt-chrysalis-core` (PDSG graph model + data-access layer), `tpt-chrysalis-hal` (`no_std` actuator/sensor Hardware Abstraction Layer), `tpt-chrysalis-sim` (simulated hardware backend implementing the HAL's traits), `tpt-chrysalis-safety` (deterministic symbolic constraint/safety-gate engine), `tpt-chrysalis-orchestrator` (per spec §5A — resource locking, protocol compilation to the HAL), `tpt-chrysalis-compliance` (per spec §5E — ALCOA+ reports, de-identification), `tpt-chrysalis-api` (backend service tying the above together), plus placeholder crates for `tpt-chrysalis-organoid` (§5B), `tpt-chrysalis-vision` (§5D), `tpt-chrysalis-active` (§5C) matching spec §5's module names exactly for later phases
+- [x] `rust-toolchain.toml` pin, workspace `rustfmt.toml`, `clippy.toml`, `deny.toml` (cargo-deny — audit `no_std` crates specifically for `alloc`-pulling transitive deps)
 - [ ] `frontend/` package: Rust/Wasm scaffold (ADR below picks the framework — `leptos`, `dioxus`, or `egui`+`wgpu` for the 3D OoC/microfluidic view) with `wasm-pack`/`trunk` build tooling
 - [ ] `schemas/` directory: shared schema definitions for PDSG node/edge types and capability-token payloads, cross-crate/cross-language data contracts, documented additive-only versioning policy
 - [ ] `docs/adr/` directory + first ADRs: (1) depend on `tpt-archon` directly for capability kernel + audit ledger + relational storage rather than building custom, (2) `tpt-chrysalis-safety` as a dedicated deterministic engine instead of using `tpt-eve` for the safety-critical path, (3) simulation-first hardware strategy for Phase 1, (4) Rust/Wasm frontend framework choice, (5) MinIO/S3 object storage addition for imaging, (6) dual Compose/Helm deployment, (7) schema evolution policy
@@ -36,7 +36,7 @@ Tracking checklist for the full 4-phase roadmap defined in `spec.txt` (v1.0.0). 
 - [ ] Dockerfiles: multi-stage Rust build (std services), separate `no_std` cross-compile toolchain image for `tpt-chrysalis-hal` firmware artifacts, Wasm frontend static build
 
 ### `tpt-archon` integration scaffolding
-- [ ] Add `tpt-archon-kernel` and `tpt-archon-core` as workspace dependencies (git dependency against the local sibling checkout initially, matching `tpt-archon`'s own pattern of referencing siblings before they're published)
+- [x] Add `tpt-archon-kernel` and `tpt-archon-core` as workspace dependencies (git dependency against the local sibling checkout initially, matching `tpt-archon`'s own pattern of referencing siblings before they're published)
 - [ ] Spike: issue and verify a trivial capability token end-to-end against `tpt-archon-kernel` outside any chrysalis-specific logic, to confirm the integration surface before building real commands on top of it
 - [ ] Spike: write and read back a record via `tpt-archon-core`'s WAL/page-manager to confirm it behaves as the "zero-copy, append-only ledger" spec §4 Layer 2 requires
 
@@ -47,20 +47,20 @@ Tracking checklist for the full 4-phase roadmap defined in `spec.txt` (v1.0.0). 
 Focus: `tpt-chrysalis-orchestrator` and `tpt-chrysalis-compliance`, per spec §8 Phase 1. Deliverable: a formally-verified `no_std` Rust HAL for a single simulated piece of lab equipment (a liquid handler or microfluidic pump), governed by `tpt-archon` capability tokens and audited via `tpt-archon`'s immutable ledger — proving the safety/security/determinism story end-to-end before any real hardware or AI is involved.
 
 ### `tpt-chrysalis-hal` (no_std HAL)
-- [ ] Define the HAL trait surface for one equipment class (e.g. `LiquidHandler: dispense(reagent, volume, target) -> Result<...>`), scoped narrowly per the spec's own "single, common piece of lab equipment" ask
+- [x] Define the HAL trait surface for one equipment class (e.g. `LiquidHandler: dispense(reagent, volume, target) -> Result<...>`), scoped narrowly per the spec's own "single, common piece of lab equipment" ask
 - [ ] `no_std`, zero-allocation implementation with formal-verification annotations/harness wired to `tpt-telos` (isolated verification dependency, not a runtime dependency — mirror `tpt-archon`'s `crates/out-archon-verify` pattern so the shippable HAL crate stays `cargo publish --dry-run` clean)
 - [ ] Prove absence of buffer overflows / race conditions / uninitialized memory for the control-loop critical path via `tpt-telos`'s verifier
-- [ ] Deterministic timing harness: even without real FPGA compilation (pending the `tpt-crucible` audit), the simulated HAL path must have bounded, measured latency between "valve open intent" and "actuation," recorded as a benchmark baseline
+- [x] Deterministic timing harness: even without real FPGA compilation (pending the `tpt-crucible` audit), the simulated HAL path must have bounded, measured latency between "valve open intent" and "actuation," recorded as a benchmark baseline
 
 ### `tpt-chrysalis-sim` (simulated hardware backend)
-- [ ] Implement `tpt-chrysalis-hal`'s trait surface against an in-process simulated actuator + sensor model (e.g. simulated pump with volume/time physics, simulated TEER/pH/temperature sensor streams with configurable noise)
-- [ ] Fault injection hooks (simulate a stuck valve, a sensor dropout, an out-of-range reading) to exercise the safety gate and audit path under failure, not just the happy path
+- [x] Implement `tpt-chrysalis-hal`'s trait surface against an in-process simulated actuator + sensor model (e.g. simulated pump with volume/time physics, simulated TEER/pH/temperature sensor streams with configurable noise)
+- [x] Fault injection hooks (simulate a stuck valve, a sensor dropout, an out-of-range reading) to exercise the safety gate and audit path under failure, not just the happy path
 
 ### `tpt-chrysalis-safety` (deterministic constraint engine)
-- [ ] Rule schema: typed preconditions over reagents/temperature/pressure/volume (e.g. "IF reagent_A AND reagent_B THEN temperature MUST BE < 4°C ELSE abort"), matching spec §4 Layer 3's example directly
-- [ ] Pure, deterministic evaluator — no LLM or network call in this decision path, unit-testable in isolation
-- [ ] Every generated protocol is symbolically evaluated against the rule set *before* compilation to the HAL; a failing check must make physical execution unreachable, not just logged
-- [ ] Unit tests: known-safe protocol passes, known-unsafe protocol (temperature/reagent violation) is blocked, malformed/incomplete protocol is rejected rather than defaulting to permissive
+- [x] Rule schema: typed preconditions over reagents/temperature/pressure/volume (e.g. "IF reagent_A AND reagent_B THEN temperature MUST BE < 4°C ELSE abort"), matching spec §4 Layer 3's example directly
+- [x] Pure, deterministic evaluator — no LLM or network call in this decision path, unit-testable in isolation
+- [x] Every generated protocol is symbolically evaluated against the rule set *before* compilation to the HAL; a failing check must make physical execution unreachable, not just logged
+- [x] Unit tests: known-safe protocol passes, known-unsafe protocol (temperature/reagent violation) is blocked, malformed/incomplete protocol is rejected rather than defaulting to permissive
 
 ### `tpt-archon` integration (capability + audit, Phase 1 blocker)
 - [ ] Capability-token issuance for chrysalis-specific physical actions (`dispense`, `open_valve`, `set_temperature`, ...), scoped per equipment/resource, short expiry

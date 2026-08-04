@@ -1,0 +1,22 @@
+[package]
+name = "tpt-chrysalis-safety"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Deterministic symbolic constraint/safety-gate engine: every protocol is symbolically evaluated before compilation to hardware"
+
+[features]
+default = []
+# The gate is `no_std` by default (it runs on-device); `std` is enabled by
+# host-side consumers (orchestrator, API, tests) for allocation conveniences.
+std = []
+
+[dependencies]
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

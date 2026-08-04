@@ -1,0 +1,73 @@
+[workspace]
+resolver = "2"
+# Phase 1 members only; Phase 2/3 crates (compliance, api, organoid, vision,
+# active) are appended as they are scaffolded.
+members = [
+    "crates/tpt-chrysalis-core",
+    "crates/tpt-chrysalis-hal",
+    "crates/tpt-chrysalis-sim",
+    "crates/tpt-chrysalis-safety",
+    "crates/tpt-chrysalis-orchestrator",
+    "crates/tpt-chrysalis-compliance",
+    "crates/tpt-chrysalis-api",
+]
+# `out-chrysalis-verify` is intentionally NOT a default workspace member: it
+# pulls git-hosted ecosystem verifiers (`tpt-telos-*`) and sibling path deps
+# that must not leak into any published crate, mirroring `tpt-archon`'s
+# `crates/out-archon-verify` exclusion (see ADR 0002). It is built/tested by
+# an opt-in CI job with network access; `cargo publish --dry-run` for every
+# shippable chrysalis crate stays clean because the verifier deps never enter
+# a workspace member.
+exclude = [
+    "crates/out-chrysalis-verify",
+    "benches",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+rust-version = "1.85"
+authors = ["TPT Solutions"]
+repository = "https://github.com/tpt-solutions/tpt-chrysalis"
+homepage = "https://github.com/tpt-solutions/tpt-chrysalis"
+
+[workspace.dependencies]
+# ---------------------------------------------------------------------------
+# tpt-archon siblings: path deps against the local checkout initially, exactly
+# matching `tpt-archon`'s own pre-publish pattern of referencing siblings as
+# path deps before they land on crates.io (see ADR 0001). Swap to
+# `git = ...`/version requirements only when archon publishes.
+# ---------------------------------------------------------------------------
+tpt-archon-core = { path = "../tpt-archon/crates/tpt-archon-core", default-features = false }
+tpt-archon-bridge = { path = "../tpt-archon/crates/tpt-archon-bridge", default-features = false }
+tpt-archon-kernel = { path = "../tpt-archon/crates/tpt-archon-kernel", default-features = false }
+tpt-archon-relational = { path = "../tpt-archon/crates/tpt-archon-relational", default-features = false }
+
+# ---------------------------------------------------------------------------
+# In-workspace crates
+# ---------------------------------------------------------------------------
+tpt-chrysalis-hal = { path = "crates/tpt-chrysalis-hal" }
+tpt-chrysalis-sim = { path = "crates/tpt-chrysalis-sim" }
+tpt-chrysalis-safety = { path = "crates/tpt-chrysalis-safety" }
+tpt-chrysalis-core = { path = "crates/tpt-chrysalis-core" }
+tpt-chrysalis-orchestrator = { path = "crates/tpt-chrysalis-orchestrator" }
+tpt-chrysalis-compliance = { path = "crates/tpt-chrysalis-compliance" }
+
+# ---------------------------------------------------------------------------
+# Common external deps (pinned major versions; the workspace lockfile pins the
+# resolved minors).
+# ---------------------------------------------------------------------------
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "1"
+
+[profile.release]
+opt-level = 3
+
+# Workspace-wide lints (opt-in per crate via `[lints] workspace = true`).
+# `cfg(kani)` marks the proof harnesses; declaring it here keeps rustc's
+# `unexpected_cfgs` lint quiet when the Kani toolchain is used.
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(kani)"] }

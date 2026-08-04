@@ -1,0 +1,21 @@
+[package]
+name = "tpt-chrysalis-api"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Minimal Phase 1 service: PDSG state + protocol submission behind capability-token bearer credentials"
+
+[dependencies]
+tpt-chrysalis-core.workspace = true
+tpt-chrysalis-hal.workspace = true
+tpt-chrysalis-sim.workspace = true
+tpt-chrysalis-safety.workspace = true
+tpt-chrysalis-orchestrator.workspace = true
+tpt-chrysalis-compliance.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
