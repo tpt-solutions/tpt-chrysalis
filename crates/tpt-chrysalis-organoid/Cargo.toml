@@ -1,0 +1,15 @@
+[package]
+name = "tpt-chrysalis-organoid"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Phase 2 multi-organ linking model and Patient-Derived Organoid screening workflow"
+
+[dependencies]
+tpt-chrysalis-safety.workspace = true
+serde.workspace = true
+thiserror.workspace = true

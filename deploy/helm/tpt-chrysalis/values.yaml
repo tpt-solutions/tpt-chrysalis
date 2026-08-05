@@ -1,4 +1,4 @@
-# tpt-chrysalis Helm Values - Phase 1 Stack
+# tpt-chrysalis Helm Values - Phase 1 + Phase 2 Stack
 # Mirrors docker-compose.yml services 1:1 for deployment parity
 
 global:
@@ -139,6 +139,10 @@ api:
     MINIO_BUCKET: chrysalis-imaging
     CAPABILITY_ROOT_KEY_FILE: /secrets/capability_root_key
     DEFAULT_SCOPE: equipment/sim-liquid-handler-0
+    # Phase 2 resource scopes (see schemas/capability/scope-registry.v1.json)
+    ORGANOID_SCOPE: equipment/sim-organoid-array-0
+    VISION_SCOPE: service/vision-0
+    MINIO_USE_TLS: "false"
   healthCheck:
     enabled: true
     initialDelaySeconds: 10

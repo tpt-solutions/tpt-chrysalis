@@ -1,5 +1,6 @@
-# tpt-chrysalis Docker Compose - Phase 1 Stack
+# tpt-chrysalis Docker Compose - Phase 1 + Phase 2 Stack
 # Dual deployment parity with Helm chart (see deploy/helm/tpt-chrysalis/)
+# Phase 2 adds the organoid/vision resource scopes and MinIO bucket init.
 # Run with: docker compose -f docker-compose.yml -f docker-compose.override.yml up
 
 version: "3.9"
@@ -75,6 +76,10 @@ services:
       - MINIO_BUCKET=chrysalis-imaging
       - CAPABILITY_ROOT_KEY_FILE=/secrets/capability_root_key
       - DEFAULT_SCOPE=equipment/sim-liquid-handler-0
+      # Phase 2 resource scopes (see schemas/capability/scope-registry.v1.json)
+      - ORGANOID_SCOPE=equipment/sim-organoid-array-0
+      - VISION_SCOPE=service/vision-0
+      - MINIO_USE_TLS=false
     volumes:
       - ./secrets:/secrets:ro
     ports:
@@ -130,6 +135,24 @@ services:
     networks:
       - chrysalis-net
     restart: unless-stopped
+
+  # One-shot bucket provisioning for the imaging store (Phase 2). Idempotent:
+  # creating an existing bucket is a no-op.
+  minio-init:
+    image: minio/mc:RELEASE.2024-01-16T16-07-38Z
+    container_name: tpt-chrysalis-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} &&
+             mc mb -p local/chrysalis-imaging || true"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+    networks:
+      - chrysalis-net
+    restart: "no"
 
 volumes:
   archon-wal:

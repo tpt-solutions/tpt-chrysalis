@@ -1,0 +1,15 @@
+[package]
+name = "tpt-chrysalis-active"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Phase 3 autonomous closed loop: tpt-anima active-learning + tpt-eve advisory, routed through tpt-chrysalis-safety unchanged"
+
+[dependencies]
+tpt-chrysalis-safety.workspace = true
+serde.workspace = true
+thiserror.workspace = true

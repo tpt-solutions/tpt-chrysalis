@@ -17,12 +17,15 @@
 extern crate alloc;
 
 pub mod api;
+pub mod domain;
 pub mod http;
 pub mod tokens;
 
 pub use api::{
     ApiAcceptedStep, ApiError, ApiExecution, ApiState, PdsgSnapshot, SubmitIntentRequest,
-    default_gate,
+    OrganoidVerifyRequest, OrganoidVerifyResponse, PdoScreenRequest, PdoScreenResponse,
+    VisionCaptureRequest, VisionCaptureResponse, default_gate,
 };
+pub use domain::{OrganoidDomain, VisionDomain};
 pub use http::{HttpRequest, HttpResponse, extract_bearer, handle_request, parse_request, write_response};
 pub use tokens::{ApiAuthError, ApiToken, ApiTokenManager};

@@ -13,3 +13,4 @@ description = "Per spec §5E: ALCOA+ compliance report generator over the hash-c
 tpt-chrysalis-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true

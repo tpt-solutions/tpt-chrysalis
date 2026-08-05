@@ -15,4 +15,7 @@ data:
   MINIO_ENDPOINT: {{ .Values.api.env.MINIO_ENDPOINT | quote }}
   MINIO_BUCKET: {{ .Values.api.env.MINIO_BUCKET | quote }}
   DEFAULT_SCOPE: {{ .Values.api.env.DEFAULT_SCOPE | quote }}
+  ORGANOID_SCOPE: {{ .Values.api.env.ORGANOID_SCOPE | quote }}
+  VISION_SCOPE: {{ .Values.api.env.VISION_SCOPE | quote }}
+  MINIO_USE_TLS: {{ .Values.api.env.MINIO_USE_TLS | quote }}
 {{- end }}

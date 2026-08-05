@@ -110,6 +110,9 @@ pub fn handle_request(state: &mut ApiState, req: &HttpRequest, now_ms: u64) -> H
             HttpResponse::json(200, &s.compliance_report(actor.as_deref(), now_ms))
         }),
         ("POST", "/api/v1/intents") => handle_submit_intent(state, req, now_ms),
+        ("POST", "/api/v1/organoid/verify") => handle_organoid_verify(state, req, now_ms),
+        ("POST", "/api/v1/organoid/screen") => handle_organoid_screen(state, req, now_ms),
+        ("POST", "/api/v1/vision/capture") => handle_vision_capture(state, req, now_ms),
         _ => HttpResponse::error(404, "no such endpoint"),
     }
 }
@@ -138,6 +141,54 @@ fn handle_submit_intent(state: &mut ApiState, req: &HttpRequest, now_ms: u64) ->
     };
     match state.submit_intent(&parsed, &actor, now_ms) {
         Ok(exec) => HttpResponse::json(201, &exec),
+        Err(e) => api_error_response(e),
+    }
+}
+
+fn handle_organoid_verify(state: &mut ApiState, req: &HttpRequest, now_ms: u64) -> HttpResponse {
+    let bearer = match extract_bearer(req) {
+        Some(b) => b.to_string(),
+        None => return HttpResponse::error(401, auth_error_message(ApiAuthError::Missing)),
+    };
+    if let Err(e) = state.authenticate(&bearer, ActionId::LinkChip, now_ms) {
+        return HttpResponse::error(401, auth_error_message(e));
+    }
+    let parsed: crate::api::OrganoidVerifyRequest = match serde_json::from_slice(&req.body) {
+        Ok(v) => v,
+        Err(e) => return HttpResponse::error(400, &format!("malformed body: {e}")),
+    };
+    HttpResponse::json(200, &state.verify_cross_chip(&parsed))
+}
+
+fn handle_organoid_screen(state: &mut ApiState, req: &HttpRequest, now_ms: u64) -> HttpResponse {
+    let bearer = match extract_bearer(req) {
+        Some(b) => b.to_string(),
+        None => return HttpResponse::error(401, auth_error_message(ApiAuthError::Missing)),
+    };
+    if let Err(e) = state.authenticate(&bearer, ActionId::ScreenPdo, now_ms) {
+        return HttpResponse::error(401, auth_error_message(e));
+    }
+    let parsed: crate::api::PdoScreenRequest = match serde_json::from_slice(&req.body) {
+        Ok(v) => v,
+        Err(e) => return HttpResponse::error(400, &format!("malformed body: {e}")),
+    };
+    HttpResponse::json(200, &state.screen_pdo(&parsed))
+}
+
+fn handle_vision_capture(state: &mut ApiState, req: &HttpRequest, now_ms: u64) -> HttpResponse {
+    let bearer = match extract_bearer(req) {
+        Some(b) => b.to_string(),
+        None => return HttpResponse::error(401, auth_error_message(ApiAuthError::Missing)),
+    };
+    if let Err(e) = state.authenticate(&bearer, ActionId::CaptureImage, now_ms) {
+        return HttpResponse::error(401, auth_error_message(e));
+    }
+    let parsed: crate::api::VisionCaptureRequest = match serde_json::from_slice(&req.body) {
+        Ok(v) => v,
+        Err(e) => return HttpResponse::error(400, &format!("malformed body: {e}")),
+    };
+    match state.capture_vision(&parsed) {
+        Ok(resp) => HttpResponse::json(201, &resp),
         Err(e) => api_error_response(e),
     }
 }

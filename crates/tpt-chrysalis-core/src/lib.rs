@@ -34,3 +34,9 @@ pub use security::{ActionId, ActionToken, TokenAuthority, TokenError};
 /// Phase 1 simulated liquid handler). Kept in one place so scope drift between
 /// issuance and verification is impossible.
 pub const DEFAULT_SCOPE: &str = "equipment/sim-liquid-handler-0";
+
+/// Phase 2 multi-organ linking scope (the simulated OoC chip array).
+pub const ORGANOID_SCOPE: &str = "equipment/sim-organoid-array-0";
+
+/// Phase 2 high-content imaging scope (object storage + CV pipeline).
+pub const VISION_SCOPE: &str = "service/vision-0";

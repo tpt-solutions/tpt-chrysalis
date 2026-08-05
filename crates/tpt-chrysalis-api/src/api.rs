@@ -20,6 +20,9 @@ use tpt_chrysalis_safety::rule::{Condition, FailureAction, Operator, Rule};
 use tpt_chrysalis_safety::Environment;
 use tpt_chrysalis_sim::model::{SimConfig, SimLiquidHandler, TickClock};
 use tpt_chrysalis_sim::sensor::{SimSensorBank, SimSensorConfig};
+use tpt_chrysalis_organoid::{DoseOutcome, FlowPlan, OrganLinkGraph, PdoScreen};
+use tpt_chrysalis_vision::{SyntheticMicroscopyImage, VisionFeatures};
+use crate::domain::{OrganoidDomain, VisionDomain};
 
 use crate::tokens::{ApiAuthError, ApiToken, ApiTokenManager};
 
@@ -181,6 +184,53 @@ pub struct PdsgSnapshot {
     pub edges: Vec<Edge>,
 }
 
+/// `POST /api/v1/organoid/verify` body: a proposed cross-chip flow plan plus
+/// the reagents currently active on the path.
+#[derive(Debug, Clone, Deserialize)]
+pub struct OrganoidVerifyRequest {
+    pub plan: FlowPlan,
+    #[serde(default)]
+    pub active_reagents: Vec<String>,
+}
+
+/// `POST /api/v1/organoid/verify` response.
+#[derive(Debug, Clone, Serialize)]
+pub struct OrganoidVerifyResponse {
+    pub allowed: bool,
+    pub errors: Vec<String>,
+}
+
+/// `POST /api/v1/organoid/screen` body: a Patient-Derived Organoid screen.
+#[derive(Debug, Clone, Deserialize)]
+pub struct PdoScreenRequest {
+    pub screen: PdoScreen,
+}
+
+/// `POST /api/v1/organoid/screen` response.
+#[derive(Debug, Clone, Serialize)]
+pub struct PdoScreenResponse {
+    pub outcomes: Vec<DoseOutcome>,
+}
+
+/// `POST /api/v1/vision/capture` body: parameters to synthesize a microscopy
+/// frame and the object-store key to write it under.
+#[derive(Debug, Clone, Deserialize)]
+pub struct VisionCaptureRequest {
+    pub seed: u64,
+    pub width: u32,
+    pub height: u32,
+    pub density: f64,
+    pub background: u8,
+    pub key: String,
+}
+
+/// `POST /api/v1/vision/capture` response.
+#[derive(Debug, Clone, Serialize)]
+pub struct VisionCaptureResponse {
+    pub features: VisionFeatures,
+    pub sha256_hex: String,
+}
+
 fn hex(bytes: &[u8]) -> String {
     let mut out = String::with_capacity(bytes.len() * 2);
     for byte in bytes {
@@ -224,6 +274,10 @@ fn build_environment(req: &SubmitIntentRequest) -> Environment {
 pub struct ApiState {
     orchestrator: SimOrchestrator,
     tokens: ApiTokenManager,
+    /// Phase 2 multi-organ linking domain (scoped to `ORGANOID_SCOPE`).
+    organoid: OrganoidDomain,
+    /// Phase 2 high-content imaging domain (scoped to `VISION_SCOPE`).
+    vision: VisionDomain,
 }
 
 impl ApiState {
@@ -247,6 +301,8 @@ impl ApiState {
         Ok(Self {
             orchestrator,
             tokens: ApiTokenManager::new(scope),
+            organoid: OrganoidDomain::new(OrganLinkGraph::new()),
+            vision: VisionDomain::new(),
         })
     }
 
@@ -344,6 +400,53 @@ impl ApiState {
         store
             .subgraph(&tpt_chrysalis_core::NodeId(root.to_string()))
             .map_err(ApiError::from)
+    }
+
+    // -- Phase 2: organoid (multi-organ linking) ---------------------------
+
+    /// Verifies a proposed cross-chip flow plan against the organoid graph's
+    /// structural limits and biological-contamination rule. Pure; the caller
+    /// must already hold a `LinkChip` capability token.
+    pub fn verify_cross_chip(
+        &self,
+        req: &OrganoidVerifyRequest,
+    ) -> OrganoidVerifyResponse {
+        let verdict = self
+            .organoid
+            .verify_cross_chip(&req.plan, &req.active_reagents);
+        OrganoidVerifyResponse {
+            allowed: verdict.allowed,
+            errors: verdict.errors(),
+        }
+    }
+
+    /// Runs a Patient-Derived Organoid screening sweep. The caller must hold a
+    /// `ScreenPdo` capability token.
+    pub fn screen_pdo(&self, req: &PdoScreenRequest) -> PdoScreenResponse {
+        PdoScreenResponse {
+            outcomes: self.organoid.screen(&req.screen),
+        }
+    }
+
+    // -- Phase 2: vision (high-content imaging) ----------------------------
+
+    /// Synthesizes a microscopy frame from the request parameters, extracts its
+    /// CV features, and writes the raw image to object storage with
+    /// checksum-on-write. The caller must hold a `CaptureImage` token.
+    pub fn capture_vision(
+        &self,
+        req: &VisionCaptureRequest,
+    ) -> Result<VisionCaptureResponse, ApiError> {
+        let img =
+            SyntheticMicroscopyImage::synthetic(req.seed, req.width, req.height, req.density, req.background);
+        let (features, stored) = self
+            .vision
+            .capture_and_store(&img, &req.key)
+            .map_err(|e| ApiError::Internal(format!("vision store: {e}")))?;
+        Ok(VisionCaptureResponse {
+            features,
+            sha256_hex: stored.sha256_hex,
+        })
     }
 }
 

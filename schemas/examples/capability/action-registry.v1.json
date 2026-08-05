@@ -1,0 +1,39 @@
+{
+  "$schema": "../capability/action-registry.v1.json",
+  "version": "1.1.0",
+  "title": "Capability Action Registry (instance)",
+  "description": "Full action registry including Phase 2 organoid/vision resource classes. Additive extension of v1.0.0.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["actions"],
+  "properties": {
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["action_id", "display_name", "resource_class", "parameters_schema"],
+        "properties": {
+          "action_id": { "type": "string" },
+          "display_name": { "type": "string" },
+          "resource_class": { "type": "string" },
+          "parameters_schema": { "type": "object", "additionalProperties": true },
+          "default_ttl_seconds": { "type": "integer", "minimum": 1, "maximum": 300, "default": 30 },
+          "requires_safety_gate": { "type": "boolean", "default": true },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  },
+  "actions": [
+    { "action_id": "dispense", "display_name": "Dispense Reagent", "resource_class": "pump", "parameters_schema": { "type": "object", "properties": { "reagent": { "type": "string" }, "volume_ul": { "type": "integer" }, "target": { "type": "string" } } }, "requires_safety_gate": true, "description": "dispense(reagent, volume, target)" },
+    { "action_id": "open_valve", "display_name": "Open/Close Valve", "resource_class": "valve", "parameters_schema": { "type": "object", "properties": { "valve": { "type": "string" }, "open": { "type": "boolean" } } }, "requires_safety_gate": true, "description": "open_valve(valve, open)" },
+    { "action_id": "set_temperature", "display_name": "Set Temperature", "resource_class": "heater", "parameters_schema": { "type": "object", "properties": { "setpoint_milli_c": { "type": "integer" } } }, "requires_safety_gate": true, "description": "set_temperature(setpoint_milli_c)" },
+    { "action_id": "read_sensor", "display_name": "Read Sensor", "resource_class": "sensor", "parameters_schema": { "type": "object", "properties": { "channel": { "type": "string" } } }, "requires_safety_gate": false, "description": "read_sensor(channel)" },
+    { "action_id": "read_state", "display_name": "Read PDSG/Audit State", "resource_class": "api", "parameters_schema": { "type": "object" }, "requires_safety_gate": false, "description": "Logical API read" },
+    { "action_id": "submit_protocol", "display_name": "Submit Protocol Intent", "resource_class": "api", "parameters_schema": { "type": "object" }, "requires_safety_gate": true, "description": "Logical API submit" },
+    { "action_id": "capture_image", "display_name": "Capture Microscopy Frame", "resource_class": "imaging", "parameters_schema": { "type": "object", "properties": { "chip_id": { "type": "string" }, "channel": { "type": "string" } } }, "requires_safety_gate": false, "description": "Phase 2: capture high-content microscopy frame (vision)" },
+    { "action_id": "store_object", "display_name": "Store Derived Object", "resource_class": "imaging", "parameters_schema": { "type": "object", "properties": { "key": { "type": "string" }, "checksum": { "type": "string" } } }, "requires_safety_gate": false, "description": "Phase 2: write image/feature object to S3/MinIO with checksum-on-write (vision)" },
+    { "action_id": "link_chip", "display_name": "Reconfigure Organ Link Graph", "resource_class": "organoid", "parameters_schema": { "type": "object", "properties": { "graph_id": { "type": "string" } } }, "requires_safety_gate": true, "description": "Phase 2: reconfigure multi-organ chip-link graph (organoid)" },
+    { "action_id": "screen_pdo", "display_name": "Run PDO Screen", "resource_class": "organoid", "parameters_schema": { "type": "object", "properties": { "screen_id": { "type": "string" } } }, "requires_safety_gate": true, "description": "Phase 2: run Patient-Derived Organoid screening sweep (organoid)" }
+  ]
+}

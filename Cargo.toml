@@ -9,6 +9,9 @@ members = [
     "crates/tpt-chrysalis-safety",
     "crates/tpt-chrysalis-orchestrator",
     "crates/tpt-chrysalis-compliance",
+    "crates/tpt-chrysalis-organoid",
+    "crates/tpt-chrysalis-vision",
+    "crates/tpt-chrysalis-active",
     "crates/tpt-chrysalis-api",
     "frontend",
 ]
@@ -54,6 +57,9 @@ tpt-chrysalis-safety = { path = "crates/tpt-chrysalis-safety" }
 tpt-chrysalis-core = { path = "crates/tpt-chrysalis-core" }
 tpt-chrysalis-orchestrator = { path = "crates/tpt-chrysalis-orchestrator" }
 tpt-chrysalis-compliance = { path = "crates/tpt-chrysalis-compliance" }
+tpt-chrysalis-organoid = { path = "crates/tpt-chrysalis-organoid" }
+tpt-chrysalis-vision = { path = "crates/tpt-chrysalis-vision" }
+tpt-chrysalis-active = { path = "crates/tpt-chrysalis-active" }
 
 # ---------------------------------------------------------------------------
 # Common external deps (pinned major versions; the workspace lockfile pins the

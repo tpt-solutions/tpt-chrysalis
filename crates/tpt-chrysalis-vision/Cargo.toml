@@ -1,0 +1,25 @@
+[package]
+name = "tpt-chrysalis-vision"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Phase 2 high-content imaging: S3/MinIO object store with checksum-on-write and a deterministic local CV pipeline"
+
+[features]
+default = []
+# Enables the real MinIO/S3 HTTP client (reqwest). Off by default so the crate
+# builds/tests with only memory + filesystem stores (no network deps).
+minio = ["reqwest"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+hmac = "0.12"
+hex = "0.4"
+thiserror.workspace = true
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"], optional = true }

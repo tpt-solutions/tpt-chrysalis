@@ -1,0 +1,32 @@
+{
+  "$schema": "../capability/scope-registry.v1.json",
+  "version": "1.1.0",
+  "title": "Capability Scope Registry (instance)",
+  "description": "Full scope registry including Phase 2 organoid/vision scopes. Additive extension of v1.0.0.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["scopes"],
+  "properties": {
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["scope_id", "display_name", "resource_type", "parent_scope"],
+        "properties": {
+          "scope_id": { "type": "string" },
+          "display_name": { "type": "string" },
+          "resource_type": { "type": "string", "enum": ["Equipment", "Valve", "Pump", "Heater", "Sensor", "Well", "Chip", "Imaging", "Organoid", "Custom"] },
+          "parent_scope": { "type": "string" },
+          "allowed_actions": { "type": "array", "items": { "type": "string" } },
+          "constraints": { "type": "object", "additionalProperties": true },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  },
+  "scopes": [
+    { "scope_id": "equipment/sim-liquid-handler-0", "display_name": "Simulated Liquid Handler", "resource_type": "Equipment", "parent_scope": "equipment", "allowed_actions": ["dispense", "open_valve", "set_temperature", "read_sensor"], "description": "Phase 1 simulated liquid handler" },
+    { "scope_id": "equipment/sim-organoid-array-0", "display_name": "Simulated Organoid Array", "resource_type": "Organoid", "parent_scope": "equipment", "allowed_actions": ["link_chip", "screen_pdo", "read_state"], "description": "Phase 2 multi-organ chip-link graph" },
+    { "scope_id": "service/vision-0", "display_name": "High-Content Imaging Service", "resource_type": "Imaging", "parent_scope": "service", "allowed_actions": ["capture_image", "store_object", "read_state"], "description": "Phase 2 imaging + object storage (MinIO/S3)" }
+  ]
+}

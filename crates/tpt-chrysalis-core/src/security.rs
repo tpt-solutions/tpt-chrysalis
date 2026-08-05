@@ -28,7 +28,8 @@ use crate::DEFAULT_SCOPE;
 /// ids in the archon IPC space (see ADR 0001). Ids 1–4 are physical actions
 /// that map to HAL channels and reach the kernel `MessageRouter`; ids 5+ are
 /// *logical* API actions that authorize service-level operations only and
-/// never map to a physical channel.
+/// never map to a physical channel (Phase 2 adds the organoid/vision classes
+/// 7–10).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[repr(u64)]
 pub enum ActionId {
@@ -44,6 +45,16 @@ pub enum ActionId {
     ReadState = 5,
     /// Logical: submit a protocol intent via the API.
     SubmitProtocol = 6,
+    /// Logical/Phase 2: capture a high-content microscopy frame (vision).
+    CaptureImage = 7,
+    /// Logical/Phase 2: write a derived object (image/feature) to object
+    /// storage (vision). Checksum-on-write is enforced by the store.
+    StoreObject = 8,
+    /// Logical/Phase 2: reconfigure a multi-organ chip-link graph (organoid).
+    LinkChip = 9,
+    /// Logical/Phase 2: run a Patient-Derived Organoid screening sweep
+    /// (organoid).
+    ScreenPdo = 10,
 }
 
 impl ActionId {
@@ -79,6 +90,10 @@ impl ActionId {
             ActionId::ReadSensor => "read_sensor",
             ActionId::ReadState => "read_state",
             ActionId::SubmitProtocol => "submit_protocol",
+            ActionId::CaptureImage => "capture_image",
+            ActionId::StoreObject => "store_object",
+            ActionId::LinkChip => "link_chip",
+            ActionId::ScreenPdo => "screen_pdo",
         }
     }
 }
@@ -282,5 +297,21 @@ mod tests {
         assert_eq!(ActionId::ReadSensor.channel_id(), 4);
         assert_eq!(ActionId::ReadSensor.right(), Right::Read);
         assert_eq!(ActionId::Dispense.right(), Right::Write);
+    }
+
+    #[test]
+    fn phase2_action_classes_are_distinct_and_named() {
+        // The four Phase 2 resource classes have distinct, stable ids and names.
+        assert_eq!(ActionId::CaptureImage.channel_id(), 7);
+        assert_eq!(ActionId::StoreObject.channel_id(), 8);
+        assert_eq!(ActionId::LinkChip.channel_id(), 9);
+        assert_eq!(ActionId::ScreenPdo.channel_id(), 10);
+        assert_eq!(ActionId::CaptureImage.name(), "capture_image");
+        assert_eq!(ActionId::StoreObject.name(), "store_object");
+        assert_eq!(ActionId::LinkChip.name(), "link_chip");
+        assert_eq!(ActionId::ScreenPdo.name(), "screen_pdo");
+        // All are logical write actions against the chrysalis service scopes.
+        assert_eq!(ActionId::CaptureImage.right(), Right::Write);
+        assert_eq!(ActionId::ScreenPdo.right(), Right::Write);
     }
 }

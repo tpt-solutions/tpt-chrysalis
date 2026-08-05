@@ -12,8 +12,20 @@
 //! The report generator never mutates the ledger and never makes network
 //! calls: it is a pure, deterministic function of the chain bytes, so the same
 //! ledger always produces the same report.
+//!
+//! Phase 4 adds standardization paths so physical assay results can leave the
+//! facility *only* through de-identified, harmonized forms:
+//! - [`fhir`] — FHIR R5 `Observation`/`Specimen` mapping.
+//! - [`omop`] — OMOP CDM `Measurement` mapping.
+//! - [`deid`] — NZ HIPC 2020 / HIPAA / GDPR de-identification of
+//!   patient-derived organoid metadata (air-gap is a deployment property; the
+//!   de-identification guarantee is enforced here in code).
 
 extern crate alloc;
+
+pub mod deid;
+pub mod fhir;
+pub mod omop;
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -23,6 +35,10 @@ use serde::Serialize;
 use tpt_chrysalis_core::{
     AuditEntry, AuditLedger, AuditOutcome, LedgerIntegrityReport, PhysicalAction,
 };
+
+pub use deid::{deidentify, contains_direct_identifier, DeidentifiedRecord, PdoMetadata};
+pub use fhir::{to_fhir_observation, to_fhir_specimen, AssayResult, FhirObservation, FhirSpecimen};
+pub use omop::{to_omop_measurement, OmopMeasurement};
 
 /// The nine ALCOA+ criteria, in regulatory order (core five, then the "+" set).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

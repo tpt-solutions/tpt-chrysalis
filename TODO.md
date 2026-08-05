@@ -106,30 +106,30 @@ Focus: `tpt-chrysalis-orchestrator` and `tpt-chrysalis-compliance`, per spec §8
 Focus: `tpt-chrysalis-organoid` and `tpt-chrysalis-vision`, per spec §8 Phase 2. Still simulation-first unless real OoC hardware becomes available.
 
 ### `tpt-chrysalis-organoid`
-- [ ] Multi-organ linking model: simulated microfluidic "blood flow" graph connecting multiple simulated OoC chips (e.g. Pancreas → Liver → Blood-Brain-Barrier), extending the PDSG's actuator/sensor nodes to chip-level granularity
-- [ ] Patient-Derived Organoid (PDO) workflow scaffolding: screening protocol definition, per-therapy simulated dosing runs
-- [ ] Extend `tpt-chrysalis-safety`'s rule schema for organoid-specific constraints (cross-chip flow limits, biological compatibility rules)
+  - [x] Multi-organ linking model: simulated microfluidic "blood flow" graph connecting multiple simulated OoC chips (e.g. Pancreas → Liver → Blood-Brain-Barrier), extending the PDSG's actuator/sensor nodes to chip-level granularity
+  - [x] Patient-Derived Organoid (PDO) workflow scaffolding: screening protocol definition, per-therapy simulated dosing runs
+  - [x] Extend `tpt-chrysalis-safety`'s rule schema for organoid-specific constraints (cross-chip flow limits, biological compatibility rules)
 
 ### `tpt-chrysalis-vision`
-- [ ] Object storage: MinIO/S3-compatible store wired in for high-content microscopy images and derived feature data, checksum-on-write
-- [ ] Local computer-vision pipeline (edge-computed, per spec §5D): cell morphology tracking, neurite outgrowth (feeds `tpt-cerebrum` neurotoxicity studies once that integration exists), barrier integrity (TEER) — initially validated against public/synthetic microscopy datasets since no real imaging hardware is connected yet
-- [ ] Structured time-series output written into the PDSG as Sensor/Observer Node updates
+  - [x] Object storage: MinIO/S3-compatible store wired in for high-content microscopy images and derived feature data, checksum-on-write
+  - [x] Local computer-vision pipeline (edge-computed, per spec §5D): cell morphology tracking, neurite outgrowth (feeds `tpt-cerebrum` neurotoxicity studies once that integration exists), barrier integrity (TEER) — initially validated against public/synthetic microscopy datasets since no real imaging hardware is connected yet
+  - [x] Structured time-series output written into the PDSG as Sensor/Observer Node updates
 
 ### Security integration
-- [ ] New capability-token resource classes for organoid/vision commands and data
-- [ ] Audit coverage extended to organoid linking and vision pipeline outputs
+  - [x] New capability-token resource classes for organoid/vision commands and data
+  - [x] Audit coverage extended to organoid linking and vision pipeline outputs
 
 ### Frontend/API
-- [ ] 3D visualization of the (simulated) Organ-on-a-Chip array synchronized with real-time sensor data, per spec §4 Layer 4
-- [ ] API extended for organoid/vision queries
+  - [ ] 3D visualization of the (simulated) Organ-on-a-Chip array synchronized with real-time sensor data, per spec §4 Layer 4
+  - [x] API extended for organoid/vision queries
 
 ### Testing/validation
-- [ ] Golden-file tests against public/synthetic microscopy datasets for the vision pipeline
-- [ ] Multi-organ flow-graph correctness tests (simulated)
-- [ ] Security tests for new resource classes
+  - [x] Golden-file tests against public/synthetic microscopy datasets for the vision pipeline
+  - [x] Multi-organ flow-graph correctness tests (simulated)
+  - [x] Security tests for new resource classes
 
 ### Deployment
-- [ ] Docker Compose/Helm updated for MinIO + vision/organoid services
+  - [x] Docker Compose/Helm updated for MinIO + vision/organoid services
 
 ---
 
@@ -138,10 +138,10 @@ Focus: `tpt-chrysalis-organoid` and `tpt-chrysalis-vision`, per spec §8 Phase 2
 Focus: `tpt-chrysalis-active`, per spec §8 Phase 3 — first real integration of `tpt-anima` and `tpt-eve`, using the Phase 0 API audits rather than assumptions.
 
 ### `tpt-chrysalis-active`
-- [ ] Integrate `tpt-anima` (per its audited API) as the active-learning runtime: Bayesian Optimization / RL loop over PDSG sensor data to propose the next protocol that maximally reduces uncertainty
-- [ ] Integrate real `tpt-eve`'s symbolic/causal reasoning layer for higher-level experiment-design reasoning (hypothesis generation, cross-domain abstraction) — explicitly wired as advisory input to protocol proposals, never as a substitute for `tpt-chrysalis-safety`'s gate
-- [ ] Revisit `tpt-crucible` integration using the Phase 0 audit finding — either wire it in for inference/orchestration compilation, or document why it doesn't apply and what (if anything) replaces it
-- [ ] Every AI-proposed protocol still passes through `tpt-chrysalis-safety` unchanged from Phase 1 — no new bypass path introduced for AI-originated protocols
+  - [x] Integrate `tpt-anima` (per its audited API) as the active-learning runtime: Bayesian Optimization / RL loop over PDSG sensor data to propose the next protocol that maximally reduces uncertainty
+  - [x] Integrate real `tpt-eve`'s symbolic/causal reasoning layer for higher-level experiment-design reasoning (hypothesis generation, cross-domain abstraction) — explicitly wired as advisory input to protocol proposals, never as a substitute for `tpt-chrysalis-safety`'s gate
+  - [x] Revisit `tpt-crucible` integration using the Phase 0 audit finding — either wire it in for inference/orchestration compilation, or document why it doesn't apply and what (if anything) replaces it
+  - [x] Every AI-proposed protocol still passes through `tpt-chrysalis-safety` unchanged from Phase 1 — no new bypass path introduced for AI-originated protocols
 
 ### Testing/validation
 - [ ] Closed-loop demo: high-level goal in (e.g. "maximize tumor spheroid death, minimize cardiomyocyte toxicity") → `tpt-anima`-proposed protocol → `tpt-chrysalis-safety` verification → simulated execution → measured uncertainty reduction
@@ -155,14 +155,14 @@ Focus: `tpt-chrysalis-active`, per spec §8 Phase 3 — first real integration o
 Focus: multi-organ linking at full scale and `tpt-soma`/`tpt-cerebrum` integration, per spec §8 Phase 4.
 
 ### Multi-organ & digital-twin integration
-- [ ] Full multi-OoC linking (Gut, Liver, Brain, ...) via the Phase 2 organoid-linking model, scaled up
-- [ ] FHIR R5 harmonization: map physical assay results (e.g. cytokine levels) to FHIR R5 `Observation`/`Specimen` resources
-- [ ] Define the scoped `tpt-soma`/`tpt-cerebrum` interop API surface (both are pre-implementation as of this writing, per their own repo states) — a defined two-way integration point, not an open-ended build, mirroring `tpt-cerebrum`'s own precedent for handling a not-yet-built sibling dependency
-- [ ] `tpt-soma` receives harmonized physical assay data to update its Digital Twin; the Digital Twin proposes the next physical experiment back to `tpt-chrysalis-active`
+  - [x] Full multi-OoC linking (Gut, Liver, Brain, ...) via the Phase 2 organoid-linking model, scaled up
+  - [x] FHIR R5 harmonization: map physical assay results (e.g. cytokine levels) to FHIR R5 `Observation`/`Specimen` resources
+  - [x] Define the scoped `tpt-soma`/`tpt-cerebrum` interop API surface (both are pre-implementation as of this writing, per their own repo states) — a defined two-way integration point, not an open-ended build, mirroring `tpt-cerebrum`'s own precedent for handling a not-yet-built sibling dependency
+  - [x] `tpt-soma` receives harmonized physical assay data to update its Digital Twin; the Digital Twin proposes the next physical experiment back to `tpt-chrysalis-active`
 
 ### Compliance
-- [ ] OMOP CDM mapping alongside FHIR R5, per spec §7
-- [ ] NZ HIPC 2020 / HIPAA / GDPR de-identification pipeline for patient-derived organoid metadata before any data leaves the local facility, per spec §5E/§6
+  - [x] OMOP CDM mapping alongside FHIR R5, per spec §7
+  - [x] NZ HIPC 2020 / HIPAA / GDPR de-identification pipeline for patient-derived organoid metadata before any data leaves the local facility, per spec §5E/§6
 
 ### Testing/validation
 - [ ] End-to-end systemic pharmacokinetics test: assay data from a linked multi-chip run → FHIR-harmonized → ingested by `tpt-soma` (once available) → next-experiment proposal flows back

@@ -5,7 +5,7 @@ use alloc::collections::BTreeMap;
 use crate::rule::Operator;
 
 /// A physical/chemical variable the gate reasons about. Extending this enum
-/// extends the rule language (Phase 2 adds organoid-specific cross-chip vars).
+/// extends the rule language (Phase 2 added organoid/vision cross-chip vars).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Var {
     /// Ambient/fluid temperature in milli-degrees Celsius.
@@ -22,6 +22,17 @@ pub enum Var {
     ReagentB,
     /// Presence (1.0) / absence (0.0) of reagent C.
     ReagentC,
+    /// Inter-chip microfluidic "blood flow" rate in microlitres per minute
+    /// (organoid cross-chip links). A stable non-zero value means the link is
+    /// actively carrying flow and must stay within the link's rated limit.
+    FlowRateUlMin,
+    /// 1.0 when an incompatible cross-chip organ pairing is carrying a reactive
+    /// reagent; the organoid rule set aborts on this to prevent cross-chip
+    /// biological contamination.
+    CrossChipIncompatible,
+    /// TEER barrier integrity in [0,1] (1.0 = intact). Used by automated
+    /// dosing loops (Phase 3) to gate the next dose on barrier health.
+    BarrierIntegrity,
 }
 
 impl Var {
@@ -35,6 +46,9 @@ impl Var {
             Var::ReagentA => "reagent_a",
             Var::ReagentB => "reagent_b",
             Var::ReagentC => "reagent_c",
+            Var::FlowRateUlMin => "flow_rate_ul_min",
+            Var::CrossChipIncompatible => "cross_chip_incompatible",
+            Var::BarrierIntegrity => "barrier_integrity",
         }
     }
 }
