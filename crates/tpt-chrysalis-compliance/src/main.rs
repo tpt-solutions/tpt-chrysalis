@@ -2,33 +2,49 @@
 //! retrieval over a persisted audit ledger (TODO.md Phase 1 compliance).
 //!
 //! Usage:
-//!   tpt-chrysalis-compliance report  <ledger.bin> [--actor NAME] [--json]
-//!   tpt-chrysalis-compliance history <ledger.bin> [--actor NAME]
+//!   tpt-chrysalis-compliance report   <ledger.bin> [--actor NAME] [--json]
+//!   tpt-chrysalis-compliance history  <ledger.bin> [--actor NAME]
+//!   tpt-chrysalis-compliance integrity <ledger.bin> [--watch] [--interval-ms N]
 //!
-//! `ledger.bin` is the WAL byte payload from `AuditLedger::save()`.
+//! `ledger.bin` is the WAL byte payload from `AuditLedger::save()`. The
+//! `integrity` subcommand is the scheduled audit-chain-integrity job: it
+//! re-walks the hash chain and exits non-zero on any broken link, so it can
+//! gate CI or feed an alerting pipeline.
 
 use std::process::ExitCode;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::thread;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use tpt_chrysalis_compliance::build_report;
 use tpt_chrysalis_core::{AuditLedger, LedgerError};
 
 fn usage() {
     eprintln!(
-        "usage: tpt-chrysalis-compliance {{report|history}} <ledger.bin> [--actor NAME] [--json]"
+        "usage: tpt-chrysalis-compliance {{report|history|integrity}} <ledger.bin> [--actor NAME] [--json] [--watch] [--interval-ms N]"
     );
 }
 
-fn parse_args(args: &[String]) -> Result<(String, String, Option<String>, bool), String> {
+#[derive(Default)]
+struct CliArgs {
+    sub: String,
+    path: String,
+    actor: Option<String>,
+    json: bool,
+    watch: bool,
+    interval_ms: u64,
+}
+
+fn parse_args(args: &[String]) -> Result<CliArgs, String> {
     let Some((sub, rest)) = args.split_first() else {
         return Err("missing subcommand".to_string());
     };
-    if sub != "report" && sub != "history" {
+    if sub != "report" && sub != "history" && sub != "integrity" {
         return Err(format!("unknown subcommand `{sub}`"));
     }
-    let mut path: Option<String> = None;
-    let mut actor: Option<String> = None;
-    let mut json = false;
+    let mut out = CliArgs {
+        sub: sub.clone(),
+        ..Default::default()
+    };
     let mut i = 0usize;
     while i < rest.len() {
         match rest[i].as_str() {
@@ -37,21 +53,33 @@ fn parse_args(args: &[String]) -> Result<(String, String, Option<String>, bool),
                 let Some(name) = rest.get(i) else {
                     return Err("`--actor` requires a name".to_string());
                 };
-                actor = Some(name.clone());
+                out.actor = Some(name.clone());
             }
-            "--json" => json = true,
+            "--json" => out.json = true,
+            "--watch" => out.watch = true,
+            "--interval-ms" => {
+                i += 1;
+                let Some(v) = rest.get(i) else {
+                    return Err("`--interval-ms` requires a value".to_string());
+                };
+                out.interval_ms = v
+                    .parse::<u64>()
+                    .map_err(|_| "`--interval-ms` must be a positive integer".to_string())?;
+            }
             other if other.starts_with('-') => return Err(format!("unknown option `{other}`")),
             other => {
-                if path.is_some() {
+                if !out.path.is_empty() {
                     return Err(format!("unexpected positional argument `{other}`"));
                 }
-                path = Some(other.to_string());
+                out.path = other.to_string();
             }
         }
         i += 1;
     }
-    let path = path.ok_or_else(|| "missing ledger path".to_string())?;
-    Ok((sub.clone(), path, actor, json))
+    if out.path.is_empty() {
+        return Err("missing ledger path".to_string());
+    }
+    Ok(out)
 }
 
 fn load_ledger(path: &str) -> Result<AuditLedger, String> {
@@ -66,9 +94,35 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
+/// The scheduled integrity job. Re-walks the hash chain and reports any broken
+/// link. Exits `1` when the chain is broken so it can gate CI / alerting.
+fn run_integrity(ledger: &AuditLedger, watch: bool, interval_ms: u64) -> ExitCode {
+    let check = || {
+        let integrity = ledger.verify_integrity();
+        let status = if integrity.is_intact() { "INTACT" } else { "BROKEN" };
+        eprintln!(
+            "[integrity] {} entries, {} broken link(s) — chain {}",
+            integrity.entry_count,
+            integrity.broken_seqs.len(),
+            status
+        );
+        integrity.is_intact()
+    };
+    let mut intact = check();
+    while watch {
+        thread::sleep(Duration::from_millis(interval_ms.max(250)));
+        intact = check();
+    }
+    if intact {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::from(1)
+    }
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let (sub, path, actor, json) = match parse_args(&args) {
+    let cli = match parse_args(&args) {
         Ok(parsed) => parsed,
         Err(msg) => {
             eprintln!("error: {msg}");
@@ -76,7 +130,7 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    let ledger = match load_ledger(&path) {
+    let ledger = match load_ledger(&cli.path) {
         Ok(l) => l,
         Err(msg) => {
             eprintln!("error: {msg}");
@@ -84,10 +138,10 @@ fn main() -> ExitCode {
         }
     };
 
-    let report = build_report(&ledger, now_ms(), actor.as_deref());
-    match sub.as_str() {
+    let report = build_report(&ledger, now_ms(), cli.actor.as_deref());
+    match cli.sub.as_str() {
         "report" => {
-            if json {
+            if cli.json {
                 let out = serde_json::to_string_pretty(&report).expect("report serializes");
                 println!("{out}");
             } else {
@@ -110,6 +164,9 @@ fn main() -> ExitCode {
                     scope = e.scope,
                 );
             }
+        }
+        "integrity" => {
+            return run_integrity(&ledger, cli.watch, cli.interval_ms);
         }
         _ => unreachable!("parse_args restricted subcommand"),
     }

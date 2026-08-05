@@ -1,0 +1,23 @@
+{{- if .Values.minio.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tpt-chrysalis.fullname" . }}-minio
+  labels:
+    {{- include "tpt-chrysalis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+spec:
+  type: ClusterIP
+  ports:
+    - name: api
+      port: {{ .Values.minio.service.api.port }}
+      targetPort: api
+      protocol: TCP
+    - name: console
+      port: {{ .Values.minio.service.console.port }}
+      targetPort: console
+      protocol: TCP
+  selector:
+    {{- include "tpt-chrysalis.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+{{- end }}

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "title": "Capability Action Registry",
+  "description": "Registry of all physical actions that can be authorized via capability tokens",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["actions"],
+  "properties": {
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["action_id", "display_name", "resource_class", "parameters_schema"],
+        "properties": {
+          "action_id": {
+            "type": "string",
+            "description": "Unique action identifier (e.g., 'dispense', 'open_valve')"
+          },
+          "display_name": {
+            "type": "string",
+            "description": "Human-readable name"
+          },
+          "resource_class": {
+            "type": "string",
+            "description": "Resource class this action applies to (e.g., 'valve', 'pump', 'heater')"
+          },
+          "parameters_schema": {
+            "type": "object",
+            "description": "JSON Schema for the action's parameters",
+            "additionalProperties": true
+          },
+          "default_ttl_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 300,
+            "description": "Default token TTL for this action (seconds)",
+            "default": 30
+          },
+          "requires_safety_gate": {
+            "type": "boolean",
+            "description": "Whether this action must pass the safety gate before execution",
+            "default": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of the action"
+          }
+        }
+      }
+    }
+  }
+}

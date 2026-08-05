@@ -1,0 +1,18 @@
+{{- if .Values.api.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "tpt-chrysalis.fullname" . }}-api-config
+  labels:
+    {{- include "tpt-chrysalis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+data:
+  RUST_LOG: {{ .Values.api.env.RUST_LOG | quote }}
+  API_BIND: {{ .Values.api.env.API_BIND | quote }}
+  ARCHON_KERNEL_ENDPOINT: {{ .Values.api.env.ARCHON_KERNEL_ENDPOINT | quote }}
+  ARCHON_STORAGE_ENDPOINT: {{ .Values.api.env.ARCHON_STORAGE_ENDPOINT | quote }}
+  ARCHON_RELATIONAL_ENDPOINT: {{ .Values.api.env.ARCHON_RELATIONAL_ENDPOINT | quote }}
+  MINIO_ENDPOINT: {{ .Values.api.env.MINIO_ENDPOINT | quote }}
+  MINIO_BUCKET: {{ .Values.api.env.MINIO_BUCKET | quote }}
+  DEFAULT_SCOPE: {{ .Values.api.env.DEFAULT_SCOPE | quote }}
+{{- end }}

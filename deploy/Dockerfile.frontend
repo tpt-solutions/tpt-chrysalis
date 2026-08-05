@@ -1,0 +1,45 @@
+# tpt-chrysalis-frontend Dockerfile - Multi-stage build
+# Build stage
+FROM rust:1.85-bookworm AS builder
+
+WORKDIR /app
+
+# Install system dependencies and wasm target
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && rustup target add wasm32-unknown-unknown
+
+# Install trunk
+RUN cargo install trunk --locked
+
+# Copy workspace files for dependency caching
+COPY frontend/Cargo.toml frontend/Trunk.toml frontend/index.html frontend/styles.css ./
+COPY frontend/src ./src
+
+# Build release
+RUN trunk build --release --public-url /
+
+# Runtime stage - nginx for static files
+FROM nginx:alpine AS runtime
+
+# Copy built assets
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy nginx config
+COPY deploy/nginx.frontend.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+    CMD curl -f http://localhost:8080/ || exit 1
+
+ENTRYPOINT ["nginx", "-g", "daemon off;"]
+
+# Development stage (for docker-compose.override.yml)
+FROM builder AS dev
+
+WORKDIR /app
+
+ENTRYPOINT ["trunk", "serve", "--port", "8080", "--host", "0.0.0.0"]

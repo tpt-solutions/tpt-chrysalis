@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "title": "Capability Scope Registry",
+  "description": "Registry of all resource scopes that capability tokens can target",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["scopes"],
+  "properties": {
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["scope_id", "display_name", "resource_type", "parent_scope"],
+        "properties": {
+          "scope_id": {
+            "type": "string",
+            "description": "Unique scope identifier (e.g., 'equipment/sim-liquid-handler-0/valve/v1')"
+          },
+          "display_name": {
+            "type": "string",
+            "description": "Human-readable name"
+          },
+          "resource_type": {
+            "type": "string",
+            "enum": ["Equipment", "Valve", "Pump", "Heater", "Sensor", "Well", "Chip", "Imaging", "Organoid", "Custom"],
+            "description": "Type of resource this scope represents"
+          },
+          "parent_scope": {
+            "type": "string",
+            "description": "Parent scope for hierarchy (e.g., 'equipment/sim-liquid-handler-0')"
+          },
+          "allowed_actions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Action IDs from action-registry that are valid for this scope"
+          },
+          "constraints": {
+            "type": "object",
+            "description": "Default constraints for tokens issued to this scope",
+            "additionalProperties": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,313 @@
+# tpt-chrysalis Helm Values - Phase 1 Stack
+# Mirrors docker-compose.yml services 1:1 for deployment parity
+
+global:
+  imageRegistry: ghcr.io/tpt-solutions
+  imagePullSecrets: []
+  # Override in values-secrets.yaml for production
+  capabilityRootKey: ""
+  minioRootUser: minioadmin
+  minioRootPassword: minioadmin
+
+# tpt-archon: capability kernel + audit ledger + relational storage
+tpt-archon:
+  enabled: true
+  image:
+    repository: tpt-archon
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  replicas: 1
+  service:
+    kernel:
+      port: 50051
+      targetPort: 50051
+    storage:
+      port: 50052
+      targetPort: 50052
+    relational:
+      port: 50053
+      targetPort: 50053
+  persistence:
+    wal:
+      enabled: true
+      size: 10Gi
+      storageClass: ""
+      accessMode: ReadWriteOnce
+    db:
+      enabled: true
+      size: 5Gi
+      storageClass: ""
+      accessMode: ReadWriteOnce
+  env:
+    RUST_LOG: info
+    ARCHON_KERNEL_BIND: 0.0.0.0:50051
+    ARCHON_STORAGE_BIND: 0.0.0.0:50052
+    ARCHON_RELATIONAL_BIND: 0.0.0.0:50053
+    ARCHON_WAL_DIR: /data/wal
+    ARCHON_DB_DIR: /data/db
+    ARCHON_CAPABILITY_ROOT_KEY_FILE: /secrets/capability_root_key
+  healthCheck:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 5
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    readOnlyRootFilesystem: false
+    allowPrivilegeEscalation: false
+
+# MinIO: S3-compatible object storage for imaging (Phase 2+ scaffolded now)
+minio:
+  enabled: true
+  image:
+    repository: minio/minio
+    tag: RELEASE.2024-01-16T16-07-38Z
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  replicas: 1
+  mode: standalone
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: ""
+    accessMode: ReadWriteOnce
+  service:
+    api:
+      port: 9000
+      targetPort: 9000
+    console:
+      port: 9001
+      targetPort: 9001
+  env:
+    MINIO_ROOT_USER: "{{ .Values.global.minioRootUser }}"
+    MINIO_ROOT_PASSWORD: "{{ .Values.global.minioRootPassword }}"
+    MINIO_PROMETHEUS_AUTH_TYPE: public
+  healthCheck:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  buckets:
+    - name: chrysalis-imaging
+      policy: none
+      purge: false
+
+# API: tpt-chrysalis-api service
+api:
+  enabled: true
+  image:
+    repository: tpt-chrysalis-api
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  replicas: 1
+  service:
+    port: 3000
+    targetPort: 3000
+    type: ClusterIP
+  env:
+    RUST_LOG: info
+    API_BIND: 0.0.0.0:3000
+    ARCHON_KERNEL_ENDPOINT: http://{{ .Release.Name }}-tpt-archon:50051
+    ARCHON_STORAGE_ENDPOINT: http://{{ .Release.Name }}-tpt-archon:50052
+    ARCHON_RELATIONAL_ENDPOINT: http://{{ .Release.Name }}-tpt-archon:50053
+    MINIO_ENDPOINT: http://{{ .Release.Name }}-minio:9000
+    MINIO_ACCESS_KEY: "{{ .Values.global.minioRootUser }}"
+    MINIO_SECRET_KEY: "{{ .Values.global.minioRootPassword }}"
+    MINIO_BUCKET: chrysalis-imaging
+    CAPABILITY_ROOT_KEY_FILE: /secrets/capability_root_key
+    DEFAULT_SCOPE: equipment/sim-liquid-handler-0
+  healthCheck:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 5
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    readOnlyRootFilesystem: false
+    allowPrivilegeEscalation: false
+
+# Frontend: Leptos + Trunk (production: nginx static serve)
+frontend:
+  enabled: true
+  image:
+    repository: tpt-chrysalis-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  replicas: 2
+  service:
+    port: 8080
+    targetPort: 8080
+    type: ClusterIP
+  env:
+    TRUNK_PORT: "8080"
+    API_BASE: /api/v1
+  healthCheck:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 101
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+
+# Scheduled audit-chain-integrity check job (TODO.md Phase 1, line 100).
+# Runs `tpt-chrysalis-compliance integrity` on a schedule; exits non-zero on a
+# broken hash chain so a failed job becomes the alerting trigger. The ledger
+# volume is mounted read-only.
+integrity:
+  enabled: true
+  schedule: "*/15 * * * *"
+  intervalMs: 60000
+  image:
+    repository: tpt-chrysalis-compliance
+    tag: latest
+    pullPolicy: IfNotPresent
+  # PVC holding the persisted audit ledger (reuses archon WAL by default).
+  ledgerClaim: ""
+  resources:
+    limits:
+      cpu: 250m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10002
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+  tls:
+    - secretName: tpt-chrysalis-tls
+      hosts:
+        - chrysalis.example.com
+  hosts:
+    - host: chrysalis.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+        - path: /api
+          pathType: Prefix
+          service: api
+        - path: /ws
+          pathType: Prefix
+          service: api
+
+# Network policies (deny-by-default, explicit allows)
+networkPolicies:
+  enabled: true
+  ingress:
+    # Allow ingress from frontend to api
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: tpt-chrysalis-frontend
+      ports:
+        - protocol: TCP
+          port: 3000
+    # Allow ingress from api to archon
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: tpt-chrysalis-api
+      ports:
+        - protocol: TCP
+          port: 50051
+        - protocol: TCP
+          port: 50052
+        - protocol: TCP
+          port: 50053
+    # Allow ingress from api to minio
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: tpt-chrysalis-api
+      ports:
+        - protocol: TCP
+          port: 9000
+  egress:
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+
+# Service accounts and RBAC
+serviceAccount:
+  create: true
+  name: tpt-chrysalis
+  annotations: {}
+
+# Pod disruption budgets for HA
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Horizontal pod autoscaler (Phase 2+)
+hpa:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+# Prometheus monitoring
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+  prometheusRule:
+    enabled: true
+
+# Secrets (reference values-secrets.yaml for actual values)
+secrets:
+  capabilityRootKey: ""
+  minioRootUser: ""
+  minioRootPassword: ""

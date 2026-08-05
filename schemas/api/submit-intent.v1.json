@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "title": "Submit Intent Request",
+  "description": "API request to submit a protocol intent for compilation and execution",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["intent", "capability_token"],
+  "properties": {
+    "intent": {
+      "$ref": "../../pdsg/node-intent.v1.json",
+      "description": "The digital intent node to execute"
+    },
+    "capability_token": {
+      "$ref": "../../capability/token.v1.json",
+      "description": "Bearer capability token authorizing the submission"
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10,
+      "description": "Execution priority (higher = more urgent)",
+      "default": 5
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata (experiment ID, run ID, etc.)",
+      "additionalProperties": true,
+      "default": {}
+    }
+  }
+}

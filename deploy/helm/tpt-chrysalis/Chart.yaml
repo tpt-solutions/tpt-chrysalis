@@ -1,0 +1,20 @@
+apiVersion: v2
+name: tpt-chrysalis
+description: Helm chart for tpt-chrysalis - Deterministic lab automation platform
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/tpt-solutions/tpt-chrysalis
+sources:
+  - https://github.com/tpt-solutions/tpt-chrysalis
+maintainers:
+  - name: TPT Solutions
+    email: maintainers@tpt-solutions.org
+keywords:
+  - lab-automation
+  - organ-on-chip
+  - safety-critical
+  - rust
+  - wasm
+annotations:
+  artifacthub.io/prerelease: "true"

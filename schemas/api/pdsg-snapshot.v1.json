@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "title": "PDSG Snapshot",
+  "description": "A point-in-time snapshot of the Physical-Digital State Graph for visualization and querying",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["snapshot_id", "timestamp_ms", "nodes", "edges", "subgraph_root"],
+  "properties": {
+    "snapshot_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this snapshot"
+    },
+    "timestamp_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Unix timestamp (milliseconds) when snapshot was taken"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "../../pdsg/node-intent.v1.json" },
+          { "$ref": "../../pdsg/node-actuator.v1.json" },
+          { "$ref": "../../pdsg/node-sensor.v1.json" }
+        ]
+      },
+      "description": "All nodes in the snapshot"
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "../../pdsg/edge.v1.json" },
+      "description": "All edges in the snapshot"
+    },
+    "subgraph_root": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Root node ID of the subgraph this snapshot represents (e.g., experiment root intent)"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Snapshot metadata (experiment ID, run ID, filter criteria)",
+      "additionalProperties": true,
+      "default": {}
+    }
+  }
+}

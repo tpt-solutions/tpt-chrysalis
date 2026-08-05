@@ -1,0 +1,245 @@
+# tpt-chrysalis CI Pipeline - Rust Workspace + Wasm Frontend + Helm
+# Mirrors the ecosystem's reusable ci-rust.yml pattern
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    branches: [main, develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+  RUST_VERSION: "1.85"
+
+jobs:
+  # Rust workspace: fmt, clippy, test, build
+  rust:
+    name: Rust Workspace
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run clippy
+        run: cargo clippy --workspace -- -D warnings
+
+      - name: Build workspace (release)
+        run: cargo build --workspace --release
+
+      - name: Run tests
+        run: cargo test --workspace
+
+      - name: Build API binary
+        run: cargo build --release --bin tpt-chrysalis-api
+
+  # Wasm frontend: build check
+  wasm-frontend:
+    name: Wasm Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: wasm32-unknown-unknown
+
+      - name: Install trunk
+        run: cargo install trunk --locked
+
+      - name: Cache trunk
+        uses: actions/cache@v4
+        with:
+          path: |
+            frontend/target
+            ~/.cargo/registry
+          key: ${{ runner.os }}-trunk-${{ hashFiles('frontend/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-trunk-
+
+      - name: Build frontend (release)
+        working-directory: frontend
+        run: trunk build --release --public-url /
+
+  # no_std HAL crate specific checks
+  hal-no-std:
+    name: HAL no_std Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: thumbv7em-none-eabihf
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            target
+          key: ${{ runner.os }}-hal-${{ hashFiles('crates/tpt-chrysalis-hal/Cargo.toml') }}
+
+      - name: Check HAL compiles for embedded target
+        run: cargo check --package tpt-chrysalis-hal --target thumbv7em-none-eabihf --no-default-features
+
+      - name: Verify no_std (no alloc/std leakage)
+        run: |
+          cargo build --package tpt-chrysalis-hal --target thumbv7em-none-eabihf --no-default-features 2>&1 | \
+          grep -E "(alloc|std)" && exit 1 || echo "no_std verified: no alloc/std deps found"
+
+  # Helm chart lint and template
+  helm:
+    name: Helm Chart
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Lint Helm chart
+        run: helm lint deploy/helm/tpt-chrysalis
+
+      - name: Template Helm chart (dry-run)
+        run: |
+          helm template tpt-chrysalis deploy/helm/tpt-chrysalis \
+            --namespace tpt-chrysalis \
+            --create-namespace \
+            --values deploy/helm/tpt-chrysalis/values-secrets.yaml.example \
+            > /dev/null
+
+      - name: Check template output
+        run: |
+          helm template tpt-chrysalis deploy/helm/tpt-chrysalis \
+            --namespace tpt-chrysalis \
+            --create-namespace \
+            --values deploy/helm/tpt-chrysalis/values-secrets.yaml.example \
+            | grep -E "(Deployment|Service|ConfigMap|Secret|PersistentVolumeClaim|Ingress|NetworkPolicy)" \
+            | wc -l
+
+  # Kind integration test (optional, runs on schedule or manual)
+  kind-integration:
+    name: Kind Integration Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: [rust, wasm-frontend, helm]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.10.0
+        with:
+          cluster_name: tpt-chrysalis
+          config: deploy/kind-config.yaml
+          node_image: kindest/node:v1.29.2
+
+      - name: Install Helm chart
+        run: |
+          kubectl create namespace tpt-chrysalis --dry-run=client -o yaml | kubectl apply -f -
+          helm upgrade --install tpt-chrysalis deploy/helm/tpt-chrysalis \
+            --namespace tpt-chrysalis \
+            --create-namespace \
+            --wait --timeout 5m \
+            -f deploy/helm/tpt-chrysalis/values-secrets.yaml.example
+
+      - name: Wait for deployments
+        run: |
+          kubectl wait --for=condition=Available deployment --all -n tpt-chrysalis --timeout=300s
+          kubectl get pods -n tpt-chrysalis
+
+      - name: Run integration tests
+        run: cargo test --workspace -- --test-threads=1
+
+  # Security audit (cargo deny)
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@v2
+
+      - name: Run cargo deny
+        run: cargo deny check
+
+  # Summary
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [rust, wasm-frontend, hal-no-std, helm, security]
+    if: always()
+    steps:
+      - name: Check job statuses
+        run: |
+          if [[ "${{ needs.rust.result }}" != "success" ]]; then
+            echo "::error::Rust workspace failed"
+            exit 1
+          fi
+          if [[ "${{ needs.wasm-frontend.result }}" != "success" ]]; then
+            echo "::error::Wasm frontend failed"
+            exit 1
+          fi
+          if [[ "${{ needs.hal-no-std.result }}" != "success" ]]; then
+            echo "::error::HAL no_std check failed"
+            exit 1
+          fi
+          if [[ "${{ needs.helm.result }}" != "success" ]]; then
+            echo "::error::Helm chart failed"
+            exit 1
+          fi
+          if [[ "${{ needs.security.result }}" != "success" ]]; then
+            echo "::error::Security audit failed"
+            exit 1
+          fi
+          echo "All CI checks passed!"

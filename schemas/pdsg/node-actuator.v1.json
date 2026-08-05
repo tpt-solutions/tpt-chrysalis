@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "title": "Physical Actuator Node",
+  "description": "A physical actuator (valve, pump, heater, etc.) that executes commands from the compiled protocol",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["node_id", "kind", "actuator_type", "resource_id", "capabilities", "status", "location"],
+  "properties": {
+    "node_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Globally unique identifier for this actuator node"
+    },
+    "kind": {
+      "type": "string",
+      "const": "Actuator",
+      "description": "Discriminant for PDSG node type"
+    },
+    "actuator_type": {
+      "type": "string",
+      "enum": ["Valve", "Pump", "Heater", "Cooler", "Stirrer", "Dispenser", "Custom"],
+      "description": "Type of physical actuator"
+    },
+    "resource_id": {
+      "type": "string",
+      "description": "Hardware-specific resource identifier (e.g., 'valve-v1', 'pump-p1')"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["Open", "Close", "SetFlowRate", "SetTemperature", "Dispense", "Stir", "Custom"]
+      },
+      "description": "Actions this actuator can perform"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Idle", "Busy", "Error", "Maintenance", "Offline"],
+      "description": "Current operational status"
+    },
+    "location": {
+      "type": "object",
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "number", "description": "X coordinate in mm" },
+        "y": { "type": "number", "description": "Y coordinate in mm" },
+        "z": { "type": "number", "description": "Z coordinate in mm" }
+      },
+      "description": "Physical location in the device coordinate space"
+    },
+    "limits": {
+      "type": "object",
+      "description": "Operating limits (max flow rate, temperature range, pressure range, etc.)",
+      "additionalProperties": true
+    },
+    "current_state": {
+      "type": "object",
+      "description": "Current actuator state (position, temperature, flow rate, etc.)",
+      "additionalProperties": true
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Free-form metadata (serial number, calibration date, etc.)",
+      "additionalProperties": true,
+      "default": {}
+    }
+  }
+}

@@ -1,0 +1,30 @@
+# Formal proofs — `tpt-chrysalis-hal` deterministic wedge
+
+This directory records the formal-verification intent for the Phase 1 `no_std`
+HAL control-loop critical path (TODO.md Phase 1, lines 51–52).
+
+The proof harnesses live in `crates/out-chrysalis-verify/` (an isolated crate
+*excluded* from the workspace so the shippable HAL stays publish-clean). They
+are written against the `cfg(kani)` proof-tooling cfg declared in the root
+`Cargo.toml`, using the open-source Kani verifier; `tpt-telos` is the
+ecosystem's verification integration point that drives the same harnesses.
+
+## `dispense.telos`
+
+The canonical proof: given an arbitrary `DispenseCommand`, the volume is
+bounded by `HAL_LIMITS` (no overflow / over-dispense), the actuation timing
+uses saturating arithmetic (no underflow / panic), and `Copy` command values
+survive the control loop without corruption (no uninitialized reads).
+
+Harness mapping (in `crates/out-chrysalis-verify/src/lib.rs`):
+
+| Proof | Property | Harness |
+|---|---|---|
+| 1  | In-limits dispense never reported `OutOfLimits` | `proof_dispense_in_limits_accepted` |
+| 1b | Over-limit volume always flagged | `proof_dispense_over_limit_rejected` |
+| 2  | Timing never underflows / panics | `proof_timing_no_underflow` |
+| 3  | `Copy` command lossless round-trip | `proof_command_copy_roundtrip` |
+| 4  | Race-freedom (structural: `&mut self`, no shared mutability) | doc + compile-time guarantees |
+
+Run with `cargo kani` (Kani toolchain installed). The same properties are
+sampled concretely by `tests/bounded_checks.rs` under plain `cargo test`.

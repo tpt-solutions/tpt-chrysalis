@@ -1,0 +1,61 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tpt-chrysalis.fullname" . }}-frontend
+  labels:
+    {{- include "tpt-chrysalis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  selector:
+    matchLabels:
+      {{- include "tpt-chrysalis.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        {{- include "tpt-chrysalis.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/frontend-configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "tpt-chrysalis.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.frontend.securityContext | nindent 8 }}
+      containers:
+        - name: frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.frontend.service.targetPort }}
+              protocol: TCP
+          env:
+            {{- range $key, $value := .Values.frontend.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+          livenessProbe:
+            {{- if .Values.frontend.healthCheck.enabled }}
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: {{ .Values.frontend.healthCheck.initialDelaySeconds }}
+            periodSeconds: {{ .Values.frontend.healthCheck.periodSeconds }}
+            timeoutSeconds: {{ .Values.frontend.healthCheck.timeoutSeconds }}
+            failureThreshold: {{ .Values.frontend.healthCheck.failureThreshold }}
+            {{- end }}
+          readinessProbe:
+            {{- if .Values.frontend.healthCheck.enabled }}
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            {{- end }}
+{{- end }}

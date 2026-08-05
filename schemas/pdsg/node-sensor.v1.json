@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "title": "Sensor/Observer Node",
+  "description": "A sensor or observer that produces readings (temperature, pH, TEER, pressure, imaging, etc.)",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["node_id", "kind", "sensor_type", "channel", "units", "sample_rate_hz", "status", "location"],
+  "properties": {
+    "node_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Globally unique identifier for this sensor node"
+    },
+    "kind": {
+      "type": "string",
+      "const": "Sensor",
+      "description": "Discriminant for PDSG node type"
+    },
+    "sensor_type": {
+      "type": "string",
+      "enum": ["Temperature", "PH", "TEER", "Pressure", "FlowRate", "Optical", "Imaging", "Custom"],
+      "description": "Type of physical quantity measured"
+    },
+    "channel": {
+      "type": "string",
+      "description": "Hardware-specific channel identifier (e.g., 'temp-ch-0', 'ph-probe-1')"
+    },
+    "units": {
+      "type": "string",
+      "description": "SI or domain units (e.g., 'celsius', 'ph', 'ohm', 'pascal', 'ul/min')"
+    },
+    "sample_rate_hz": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Nominal sampling rate in Hz (0 = event-driven)"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Active", "Degraded", "Offline", "Calibrating", "Error"],
+      "description": "Current operational status"
+    },
+    "location": {
+      "type": "object",
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "number", "description": "X coordinate in mm" },
+        "y": { "type": "number", "description": "Y coordinate in mm" },
+        "z": { "type": "number", "description": "Z coordinate in mm" }
+      },
+      "description": "Physical location in the device coordinate space"
+    },
+    "calibration": {
+      "type": "object",
+      "description": "Calibration parameters (offset, scale, polynomial coefficients, last cal date)",
+      "additionalProperties": true
+    },
+    "noise_model": {
+      "type": "object",
+      "description": "Noise characteristics (Gaussian sigma, drift rate, dropout probability)",
+      "additionalProperties": true
+    },
+    "current_reading": {
+      "type": "object",
+      "description": "Most recent sensor reading (value, timestamp, quality flags)",
+      "additionalProperties": true
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Free-form metadata (serial number, calibration date, etc.)",
+      "additionalProperties": true,
+      "default": {}
+    }
+  }
+}

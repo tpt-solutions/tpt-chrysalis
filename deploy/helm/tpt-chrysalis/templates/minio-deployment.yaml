@@ -1,0 +1,104 @@
+{{- if .Values.minio.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tpt-chrysalis.fullname" . }}-minio
+  labels:
+    {{- include "tpt-chrysalis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+spec:
+  replicas: {{ .Values.minio.replicas }}
+  selector:
+    matchLabels:
+      {{- include "tpt-chrysalis.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: minio
+  template:
+    metadata:
+      labels:
+        {{- include "tpt-chrysalis.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: minio
+    spec:
+      serviceAccountName: {{ include "tpt-chrysalis.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: minio
+          image: "{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag }}"
+          imagePullPolicy: {{ .Values.minio.image.pullPolicy }}
+          command:
+            - server
+            - /data
+            - --console-address
+            - ":9001"
+          ports:
+            - name: api
+              containerPort: {{ .Values.minio.service.api.targetPort }}
+              protocol: TCP
+            - name: console
+              containerPort: {{ .Values.minio.service.console.targetPort }}
+              protocol: TCP
+          env:
+            {{- range $key, $value := .Values.minio.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ include "tpt-chrysalis.minioSecretName" . }}
+                optional: true
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            {{- toYaml .Values.minio.resources | nindent 12 }}
+          livenessProbe:
+            {{- if .Values.minio.healthCheck.enabled }}
+            httpGet:
+              path: /minio/health/live
+              port: api
+            initialDelaySeconds: {{ .Values.minio.healthCheck.initialDelaySeconds }}
+            periodSeconds: {{ .Values.minio.healthCheck.periodSeconds }}
+            timeoutSeconds: {{ .Values.minio.healthCheck.timeoutSeconds }}
+            failureThreshold: {{ .Values.minio.healthCheck.failureThreshold }}
+            {{- end }}
+          readinessProbe:
+            {{- if .Values.minio.healthCheck.enabled }}
+            httpGet:
+              path: /minio/health/ready
+              port: api
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            {{- end }}
+      volumes:
+        - name: data
+          {{- if .Values.minio.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "tpt-chrysalis.fullname" . }}-minio
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+---
+{{- if .Values.minio.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "tpt-chrysalis.fullname" . }}-minio
+  labels:
+    {{- include "tpt-chrysalis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+spec:
+  accessModes:
+    - {{ .Values.minio.persistence.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.minio.persistence.size }}
+  {{- if .Values.minio.persistence.storageClass }}
+  storageClassName: {{ .Values.minio.persistence.storageClass }}
+  {{- end }}
+---
+{{- end }}
+{{- end }}

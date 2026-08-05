@@ -1,0 +1,46 @@
+# yamllint configuration for tpt-chrysalis
+extends: relaxed
+
+rules:
+  line-length:
+    max: 120
+    level: warning
+  document-start:
+    present: true
+    level: warning
+  trailing-spaces:
+    level: error
+  empty-lines:
+    max: 2
+    max-start: 0
+    max-end: 1
+    level: warning
+  indentation:
+    spaces: 2
+    level: error
+  key-duplicates:
+    level: error
+  braces:
+    level: warning
+  brackets:
+    level: warning
+  colons:
+    level: warning
+  commas:
+    level: warning
+  comments:
+    level: warning
+  comments-indentation:
+    level: warning
+  document-end:
+    level: warning
+  empty-values:
+    level: warning
+  hyphens:
+    level: warning
+  key-ordering:
+    level: disable
+  new-line-at-end-of-file:
+    level: warning
+  truthy:
+    level: warning

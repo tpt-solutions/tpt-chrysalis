@@ -1,0 +1,102 @@
+# tpt-chrysalis Docker Compose Override - Local Development Conveniences
+# Usage: docker compose -f docker-compose.yml -f docker-compose.override.yml up
+
+version: "3.9"
+
+services:
+  # tpt-archon: expose debug ports, mount local config for iteration
+  tpt-archon:
+    ports:
+      - "50051:50051"  # Kernel gRPC
+      - "50052:50052"  # Storage gRPC
+      - "50053:50053"  # Relational gRPC
+      - "9090:9090"    # Metrics/pprof (if enabled)
+    environment:
+      - RUST_LOG=debug
+      - ARCHON_ENABLE_PPROF=true
+    volumes:
+      - ../crates:/workspace/crates:ro  # Mount source for debugging
+    command: ["--dev-mode"]  # If archon supports it
+
+  # MinIO: local dev conveniences
+  minio:
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+      - MINIO_PROMETHEUS_AUTH_TYPE=public
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+      - "9090:9090"  # MinIO metrics
+    volumes:
+      - ./minio-init:/docker-entrypoint-initdb.d:ro  # Optional bucket init scripts
+
+  # API: hot reload via cargo watch, debug port, source mounts
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+      target: dev  # Multi-stage: dev target has cargo-watch
+    environment:
+      - RUST_LOG=debug
+      - API_BIND=0.0.0.0:3000
+      - ARCHON_KERNEL_ENDPOINT=http://tpt-archon:50051
+      - ARCHON_STORAGE_ENDPOINT=http://tpt-archon:50052
+      - ARCHON_RELATIONAL_ENDPOINT=http://tpt-archon:50053
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=chrysalis-imaging
+      - CAPABILITY_ROOT_KEY_FILE=/secrets/capability_root_key
+      - DEFAULT_SCOPE=equipment/sim-liquid-handler-0
+    volumes:
+      - ../crates:/workspace/crates:ro
+      - ../Cargo.toml:/workspace/Cargo.toml:ro
+      - ../Cargo.lock:/workspace/Cargo.lock:ro
+      - ./secrets:/secrets:ro
+      - cargo-cache:/usr/local/cargo/registry
+      - cargo-target:/workspace/target
+    ports:
+      - "3000:3000"   # API
+      - "9091:9091"   # Metrics/pprof
+      - "5678:5678"   # Debug adapter (if using debug adapter protocol)
+    command: ["cargo", "watch", "-x", "run --bin tpt-chrysalis-api"]
+    depends_on:
+      tpt-archon:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+
+  # Frontend: Trunk dev server with hot reload
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../deploy/Dockerfile.frontend
+      target: dev
+    environment:
+      - TRUNK_PORT=8080
+      - API_BASE=http://localhost:3000/api/v1  # Proxy to host for browser access
+    volumes:
+      - ../frontend/src:/app/src:ro
+      - ../frontend/Cargo.toml:/app/Cargo.toml:ro
+      - ../frontend/Trunk.toml:/app/Trunk.toml:ro
+      - ../frontend/index.html:/app/index.html:ro
+      - ../frontend/styles.css:/app/styles.css:ro
+      - trunk-cache:/app/target
+    ports:
+      - "8080:8080"  # Trunk dev server
+    depends_on:
+      - api
+    stdin_open: true
+    tty: true
+
+volumes:
+  cargo-cache:
+  cargo-target:
+  trunk-cache:
+
+networks:
+  chrysalis-net:
+    driver: bridge

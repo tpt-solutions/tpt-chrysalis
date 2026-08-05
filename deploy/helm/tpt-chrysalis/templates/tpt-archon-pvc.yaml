@@ -1,0 +1,40 @@
+{{- if .Values.tpt-archon.enabled }}
+{{- if .Values.tpt-archon.persistence.wal.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "tpt-chrysalis.fullname" . }}-tpt-archon-wal
+  labels:
+    {{- include "tpt-chrysalis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tpt-archon
+spec:
+  accessModes:
+    - {{ .Values.tpt-archon.persistence.wal.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.tpt-archon.persistence.wal.size }}
+  {{- if .Values.tpt-archon.persistence.wal.storageClass }}
+  storageClassName: {{ .Values.tpt-archon.persistence.wal.storageClass }}
+  {{- end }}
+---
+{{- end }}
+{{- if .Values.tpt-archon.persistence.db.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "tpt-chrysalis.fullname" . }}-tpt-archon-db
+  labels:
+    {{- include "tpt-chrysalis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tpt-archon
+spec:
+  accessModes:
+    - {{ .Values.tpt-archon.persistence.db.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.tpt-archon.persistence.db.size }}
+  {{- if .Values.tpt-archon.persistence.db.storageClass }}
+  storageClassName: {{ .Values.tpt-archon.persistence.db.storageClass }}
+  {{- end }}
+---
+{{- end }}
+{{- end }}

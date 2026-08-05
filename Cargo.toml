@@ -10,6 +10,7 @@ members = [
     "crates/tpt-chrysalis-orchestrator",
     "crates/tpt-chrysalis-compliance",
     "crates/tpt-chrysalis-api",
+    "frontend",
 ]
 # `out-chrysalis-verify` is intentionally NOT a default workspace member: it
 # pulls git-hosted ecosystem verifiers (`tpt-telos-*`) and sibling path deps

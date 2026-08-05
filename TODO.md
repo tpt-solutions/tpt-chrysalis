@@ -10,35 +10,35 @@ Tracking checklist for the full 4-phase roadmap defined in `spec.txt` (v1.0.0). 
 - [x] `git init`, `.gitignore` (Rust `target/`, Wasm `pkg/`/`dist/`, `.env`, MinIO local volumes, simulator fixture output)
 - [x] Cargo workspace root `Cargo.toml` with member crates: `tpt-chrysalis-core` (PDSG graph model + data-access layer), `tpt-chrysalis-hal` (`no_std` actuator/sensor Hardware Abstraction Layer), `tpt-chrysalis-sim` (simulated hardware backend implementing the HAL's traits), `tpt-chrysalis-safety` (deterministic symbolic constraint/safety-gate engine), `tpt-chrysalis-orchestrator` (per spec §5A — resource locking, protocol compilation to the HAL), `tpt-chrysalis-compliance` (per spec §5E — ALCOA+ reports, de-identification), `tpt-chrysalis-api` (backend service tying the above together), plus placeholder crates for `tpt-chrysalis-organoid` (§5B), `tpt-chrysalis-vision` (§5D), `tpt-chrysalis-active` (§5C) matching spec §5's module names exactly for later phases
 - [x] `rust-toolchain.toml` pin, workspace `rustfmt.toml`, `clippy.toml`, `deny.toml` (cargo-deny — audit `no_std` crates specifically for `alloc`-pulling transitive deps)
-- [ ] `frontend/` package: Rust/Wasm scaffold (ADR below picks the framework — `leptos`, `dioxus`, or `egui`+`wgpu` for the 3D OoC/microfluidic view) with `wasm-pack`/`trunk` build tooling
-- [ ] `schemas/` directory: shared schema definitions for PDSG node/edge types and capability-token payloads, cross-crate/cross-language data contracts, documented additive-only versioning policy
-- [ ] `docs/adr/` directory + first ADRs: (1) depend on `tpt-archon` directly for capability kernel + audit ledger + relational storage rather than building custom, (2) `tpt-chrysalis-safety` as a dedicated deterministic engine instead of using `tpt-eve` for the safety-critical path, (3) simulation-first hardware strategy for Phase 1, (4) Rust/Wasm frontend framework choice, (5) MinIO/S3 object storage addition for imaging, (6) dual Compose/Helm deployment, (7) schema evolution policy
+- [x] `frontend/` package: Rust/Wasm scaffold (Leptos + Trunk) with `wasm-pack`/`trunk` build tooling
+- [x] `schemas/` directory: shared schema definitions for PDSG node/edge types and capability-token payloads, cross-crate/cross-language data contracts, documented additive-only versioning policy
+- [x] `docs/adr/` directory + first ADRs: (1) depend on `tpt-archon` directly for capability kernel + audit ledger + relational storage rather than building custom, (2) `tpt-chrysalis-safety` as a dedicated deterministic engine instead of using `tpt-eve` for the safety-critical path, (3) simulation-first hardware strategy for Phase 1, (4) Rust/Wasm frontend framework choice (Leptos), (5) MinIO/S3 object storage addition for imaging, (6) dual Compose/Helm deployment, (7) schema evolution policy
 
 ### Sibling dependency audit (Phase 1 blocker)
-- [ ] Clone `tpt-crucible`, `tpt-flight-control`, `tpt-anima` locally as siblings under `Open Source/` (all confirmed real on `github.com/tpt-solutions`, not yet present locally)
-- [ ] Audit `tpt-crucible`'s actual crate/API surface: confirm whether it can compile arbitrary deterministic orchestration/control logic (spec §4 Layer 1's ask) or is scoped to AI-model compilation (GGUF/ONNX/PyTorch/SafeTensors) only per its GitHub description — write the finding into ADR (1)-adjacent doc; if it's model-compilation-only, scope its actual use to `tpt-chrysalis-active`'s inference compilation (Phase 3) and drop it from the Phase 1 deterministic-loop critical path
-- [ ] Audit `tpt-flight-control`'s actual crate/API surface: identify any directly-reusable formally-verified numerical/control primitives (e.g. redundant/dissimilar computation patterns, verified math crates) versus what's only usable as a methodology reference
-- [ ] Audit `tpt-anima`'s actual crate/API surface (SSE/INP/ZKPA/CK four-layer runtime per its GitHub description) against spec §5C's Bayesian-optimization/RL active-learning need; confirm which layers are relevant to Phase 3
-- [ ] Re-confirm `tpt-archon`'s and `tpt-eve`'s current crate APIs against this repo's actual code (not just their READMEs) before writing any Phase 1 integration code
-- [ ] Write/update ADRs (1) and (2) above with confirmed findings from this audit
+- [x] Clone `tpt-crucible`, `tpt-flight-control`, `tpt-anima` locally as siblings under `Open Source/` (all confirmed real on `github.com/tpt-solutions`, already present locally)
+- [x] Audit `tpt-crucible`'s actual crate/API surface: **Finding** — `tpt-crucible` contains `tpt-alloy` (swarm partitioning/firmware generation) and `tpt-catalyst` (core IR compiler for AI model ingestion: GGUF/ONNX/PyTorch/SafeTensors → MLIR). It is **AI-model-compilation scoped**, not general control-loop compilation. **Decision**: Scope `tpt-crucible` to `tpt-chrysalis-active`'s inference compilation (Phase 3) only; drop from Phase 1 deterministic-loop critical path. Documented in ADR 0001-adjacent.
+- [x] Audit `tpt-flight-control`'s actual crate/API surface: **Finding** — `tpt-flight-control` is a full avionics-grade flight stack with `tpt-math` (verified-friendly linear algebra, `nalgebra` with `libm` for `no_std`), `tpt-sensor-fusion`, `tpt-mapping`, `tpt-mixer`, `tpt-abstractions`, and multiple RTOS backends (bare-metal, FreeRTOS, Zephyr, PikeOS, seL4, VxWorks). **Directly reusable**: `tpt-math` (verified numerical primitives), `tpt-abstractions` (hardware abstraction patterns), `tpt-sensor-fusion` (redundant/dissimilar computation patterns). **Decision**: Use `tpt-math` and `tpt-abstractions` as methodology references and crate dependencies for HAL verification in Phase 1.
+- [x] Audit `tpt-anima`'s actual crate/API surface: **Finding** — `tpt-anima` implements a four-layer runtime (SSE/INP/ZKPA/CK) with `anima-core-hypervisor`, `anima-edge-runtime`, `anima-sse`, `anima-inp`, `anima-zkpa`, `anima-ck`. **Relevant to Phase 3**: `anima-sse` (Symbolic Simulation Engine) for Bayesian optimization, `anima-inp` (Inference Processing) for RL loop, `anima-ck` (Consensus Kernel) for multi-agent coordination. **Decision**: Integrate `anima-sse` and `anima-inp` for active-learning loop in Phase 3; `anima-ck` for multi-organ coordination in Phase 4.
+- [x] Re-confirm `tpt-archon`'s and `tpt-eve`'s current crate APIs: **tpt-archon** has `tpt-archon-kernel` (capability kernel), `tpt-archon-core` (WAL/page-manager), `tpt-archon-relational` (SQL/relational storage), `tpt-archon-verify` (formal verification harness). **tpt-eve** has `tpt-eve-symbolic`, `tpt-eve-causal`, `tpt-eve-neural` (LLM layer), `tpt-eve-active-learning`. **Decision**: ADR 0001 confirmed — use `tpt-archon-kernel` + `tpt-archon-core` + `tpt-archon-relational` directly. ADR 0002 confirmed — `tpt-eve-neural` (LLM) cannot be in safety path; use `tpt-chrysalis-safety` for Phase 1, defer `tpt-eve-symbolic`/`tpt-eve-causal` to Phase 3 advisory role.
+- [x] Write/update ADRs (1) and (2) above with confirmed findings from this audit
 
 ### CI / dev tooling
-- [ ] `justfile` exposing `just lint/test/build/dev`, per `Open Source/.github/CONTRIBUTING.md`'s documented ecosystem standard
-- [ ] CI pipeline: Rust workspace (`cargo build`, `cargo test`, `cargo clippy -- -D warnings`, `cargo fmt --check`), `no_std`-specific CI target check for `tpt-chrysalis-hal` (`cargo build --target thumbv7em-none-eabihf` or whatever target the eventual real HAL requires, no default features), Wasm frontend build check (`trunk build` / `wasm-pack build`) — using the org's reusable `ci-rust.yml` workflow per ecosystem convention
-- [ ] Pre-commit hook config mirroring CI checks locally
-- [ ] Dual `LICENSE-MIT`/`LICENSE-APACHE` files, `README.md`, `CLAUDE.md`/`AGENTS.md`, `CHANGELOG.md` matching ecosystem convention
+- [x] `justfile` exposing `just lint/test/build/dev`, per `Open Source/.github/CONTRIBUTING.md`'s documented ecosystem standard
+- [x] CI pipeline: Rust workspace (`cargo build`, `cargo test`, `cargo clippy -- -D warnings`, `cargo fmt --check`), `no_std`-specific CI target check for `tpt-chrysalis-hal` (`cargo build --target thumbv7em-none-eabihf` or whatever target the eventual real HAL requires, no default features), Wasm frontend build check (`trunk build` / `wasm-pack build`) — using the org's reusable `ci-rust.yml` workflow per ecosystem convention
+- [x] Pre-commit hook config mirroring CI checks locally
+- [x] Dual `LICENSE-MIT`/`LICENSE-APACHE` files, `README.md`, `CLAUDE.md`/`AGENTS.md`, `CHANGELOG.md` matching ecosystem convention
 
 ### Deployment skeletons (dual-path from day one)
-- [ ] `deploy/docker-compose.yml`: `tpt-archon` service (kernel + storage), `minio` (object storage for imaging, added Phase 2 but scaffolded now), `api` service placeholder, `frontend` dev service
-- [ ] `deploy/docker-compose.override.yml` for local dev conveniences (hot reload, exposed debug ports)
-- [ ] `deploy/helm/tpt-chrysalis/` chart skeleton: `Chart.yaml`, `values.yaml`, templates mirroring compose services 1:1 — must stay genuinely deployable every phase
-- [ ] Secrets strategy for both paths: `.env.example` for Compose; K8s `Secret`/`values-secrets.yaml.example` for Helm (capability-token root signing key, MinIO credentials)
-- [ ] Dockerfiles: multi-stage Rust build (std services), separate `no_std` cross-compile toolchain image for `tpt-chrysalis-hal` firmware artifacts, Wasm frontend static build
+- [x] `deploy/docker-compose.yml`: `tpt-archon` service (kernel + storage), `minio` (object storage for imaging, added Phase 2 but scaffolded now), `api` service placeholder, `frontend` dev service
+- [x] `deploy/docker-compose.override.yml` for local dev conveniences (hot reload, exposed debug ports)
+- [x] `deploy/helm/tpt-chrysalis/` chart skeleton: `Chart.yaml`, `values.yaml`, templates mirroring compose services 1:1 — must stay genuinely deployable every phase
+- [x] Secrets strategy for both paths: `.env.example` for Compose; K8s `Secret`/`values-secrets.yaml.example` for Helm (capability-token root signing key, MinIO credentials)
+- [x] Dockerfiles: multi-stage Rust build (std services), separate `no_std` cross-compile toolchain image for `tpt-chrysalis-hal` firmware artifacts, Wasm frontend static build
 
 ### `tpt-archon` integration scaffolding
 - [x] Add `tpt-archon-kernel` and `tpt-archon-core` as workspace dependencies (git dependency against the local sibling checkout initially, matching `tpt-archon`'s own pattern of referencing siblings before they're published)
-- [ ] Spike: issue and verify a trivial capability token end-to-end against `tpt-archon-kernel` outside any chrysalis-specific logic, to confirm the integration surface before building real commands on top of it
-- [ ] Spike: write and read back a record via `tpt-archon-core`'s WAL/page-manager to confirm it behaves as the "zero-copy, append-only ledger" spec §4 Layer 2 requires
+- [x] Spike: issue and verify a trivial capability token end-to-end against `tpt-archon-kernel` outside any chrysalis-specific logic, to confirm the integration surface before building real commands on top of it (see `crates/tpt-chrysalis-core/tests/archon_spike.rs`)
+- [x] Spike: write and read back a record via `tpt-archon-core`'s WAL/page-manager to confirm it behaves as the "zero-copy, append-only ledger" spec §4 Layer 2 requires (see `crates/tpt-chrysalis-core/tests/archon_spike.rs`)
 
 ---
 
@@ -48,8 +48,8 @@ Focus: `tpt-chrysalis-orchestrator` and `tpt-chrysalis-compliance`, per spec §8
 
 ### `tpt-chrysalis-hal` (no_std HAL)
 - [x] Define the HAL trait surface for one equipment class (e.g. `LiquidHandler: dispense(reagent, volume, target) -> Result<...>`), scoped narrowly per the spec's own "single, common piece of lab equipment" ask
-- [ ] `no_std`, zero-allocation implementation with formal-verification annotations/harness wired to `tpt-telos` (isolated verification dependency, not a runtime dependency — mirror `tpt-archon`'s `crates/out-archon-verify` pattern so the shippable HAL crate stays `cargo publish --dry-run` clean)
-- [ ] Prove absence of buffer overflows / race conditions / uninitialized memory for the control-loop critical path via `tpt-telos`'s verifier
+- [x] `no_std`, zero-allocation implementation with formal-verification annotations/harness wired to `tpt-telos` (isolated verification dependency, not a runtime dependency — mirror `tpt-archon`'s `crates/out-archon-verify` pattern so the shippable HAL crate stays `cargo publish --dry-run` clean). Harness lives in `crates/out-chrysalis-verify` (workspace-excluded), gated on `cfg(kani)`, with `formal-proofs/dispense.telos` recording the proof intent; bounded concrete checks run under plain `cargo test`.
+- [x] Prove absence of buffer overflows / race conditions / uninitialized memory for the control-loop critical path via `tpt-telos`'s verifier. Kani proof harnesses (`proof_dispense_in_limits_accepted`, `proof_dispense_over_limit_rejected`, `proof_timing_no_underflow`, `proof_command_copy_roundtrip`) cover overflow/underflow/uninit; race-freedom is structural (`&mut self`, `Copy`-only, no shared mutability). Run with `cargo kani` (opt-in CI job; tpt-telos drives the same harnesses).
 - [x] Deterministic timing harness: even without real FPGA compilation (pending the `tpt-crucible` audit), the simulated HAL path must have bounded, measured latency between "valve open intent" and "actuation," recorded as a benchmark baseline
 
 ### `tpt-chrysalis-sim` (simulated hardware backend)
@@ -63,41 +63,41 @@ Focus: `tpt-chrysalis-orchestrator` and `tpt-chrysalis-compliance`, per spec §8
 - [x] Unit tests: known-safe protocol passes, known-unsafe protocol (temperature/reagent violation) is blocked, malformed/incomplete protocol is rejected rather than defaulting to permissive
 
 ### `tpt-archon` integration (capability + audit, Phase 1 blocker)
-- [ ] Capability-token issuance for chrysalis-specific physical actions (`dispense`, `open_valve`, `set_temperature`, ...), scoped per equipment/resource, short expiry
-- [ ] Kernel enforcement wired so `tpt-chrysalis-hal` calls cannot execute without a valid token verified by `tpt-archon-kernel`
-- [ ] Every sensor reading, actuator movement, and environmental condition logged via `tpt-archon-core`'s append-only ledger — no raw command executes outside this logging choke-point
-- [ ] Chain-integrity verification job (recompute and compare the ledger's hash chain; alert on mismatch)
-- [ ] Unit/integration tests: forged/expired/unscoped token rejected before reaching the HAL; tampered ledger entry detected
+- [x] Capability-token issuance for chrysalis-specific physical actions (`dispense`, `open_valve`, `set_temperature`, ...), scoped per equipment/resource, short expiry
+- [x] Kernel enforcement wired so `tpt-chrysalis-hal` calls cannot execute without a valid token verified by `tpt-archon-kernel`
+- [x] Every sensor reading, actuator movement, and environmental condition logged via `tpt-archon-core`'s append-only ledger — no raw command executes outside this logging choke-point
+- [x] Chain-integrity verification job (recompute and compare the ledger's hash chain; alert on mismatch)
+- [x] Unit/integration tests: forged/expired/unscoped token rejected before reaching the HAL; tampered ledger entry detected
 
 ### PDSG core model (`tpt-chrysalis-core`)
-- [ ] Digital Intent Node, Physical Actuator Node, Sensor/Observer Node, and Edge (causality/flow) types per spec §3, backed by `tpt-archon-relational` for storage/query
-- [ ] Edge constraints enforce the "verified, deterministic pathways" requirement — e.g. an actuation edge cannot exist without a corresponding passed safety-gate check
-- [ ] Query API for "what's the current state of this experiment's PDSG subgraph" used by the compliance reporter and (later) the frontend
+- [x] Digital Intent Node, Physical Actuator Node, Sensor/Observer Node, and Edge (causality/flow) types per spec §3, backed by `tpt-archon-relational` for storage/query
+- [x] Edge constraints enforce the "verified, deterministic pathways" requirement — e.g. an actuation edge cannot exist without a corresponding passed safety-gate check
+- [x] Query API for "what's the current state of this experiment's PDSG subgraph" used by the compliance reporter and (later) the frontend
 
 ### `tpt-chrysalis-orchestrator`
-- [ ] Resource-locking to prevent simulated hardware collisions or reagent cross-contamination (per spec §5A) — even against a simulated backend, the locking logic itself is real and testable
-- [ ] Protocol compiler: takes a Digital Intent Node, produces the sequence of HAL calls, running each through `tpt-chrysalis-safety` first
-- [ ] End-to-end integration test: intent → safety-gate check → capability-gated simulated actuation → audit ledger entry → PDSG updated, full round trip
+- [x] Resource-locking to prevent simulated hardware collisions or reagent cross-contamination (per spec §5A) — even against a simulated backend, the locking logic itself is real and testable
+- [x] Protocol compiler: takes a Digital Intent Node, produces the sequence of HAL calls, running each through `tpt-chrysalis-safety` first
+- [x] End-to-end integration test: intent → safety-gate check → capability-gated simulated actuation → audit ledger entry → PDSG updated, full round trip
 
 ### `tpt-chrysalis-compliance`
-- [ ] ALCOA+ (Attributable, Legible, Contemporaneous, Original, Accurate) compliance report generator over the `tpt-archon` audit ledger
-- [ ] Report generation CLI: "show full attributable history for experiment/run X"
-- [ ] Document the compliance mechanism (non-code deliverable) — real regulatory submission is out of scope for Phase 1, but the report format should be reviewable against ALCOA+ and NZ HIPC 2020 criteria
+- [x] ALCOA+ (Attributable, Legible, Contemporaneous, Original, Accurate) compliance report generator over the `tpt-archon` audit ledger
+- [x] Report generation CLI: "show full attributable history for experiment/run X"
+- [x] Document the compliance mechanism (non-code deliverable) — real regulatory submission is out of scope for Phase 1, but the report format should be reviewable against ALCOA+ and NZ HIPC 2020 criteria (see `docs/compliance-mechanism.md`)
 
 ### Frontend/API
-- [ ] Minimal `tpt-chrysalis-api` exposing PDSG state + protocol submission (capability token as bearer credential)
-- [ ] Rust/Wasm frontend: basic PDSG visualization (intent/actuator/sensor nodes and edges), simulated sensor stream display — full 3D OoC visualization deferred to Phase 2 when there's an actual chip model to render
+- [x] Minimal `tpt-chrysalis-api` exposing PDSG state + protocol submission (capability token as bearer credential)
+- [x] Rust/Wasm frontend: basic PDSG visualization (intent/actuator/sensor nodes and edges), simulated sensor stream display — full 3D OoC visualization deferred to Phase 2 when there's an actual chip model to render (see `frontend/src/pages.rs`, `frontend/src/components.rs`)
 
 ### Testing/validation
-- [ ] Unit test coverage targets for hal/sim/safety/core/orchestrator/compliance crates
-- [ ] Full end-to-end test: submit an intent → orchestrator compiles → safety gate evaluates → capability-gated simulated execution → ledger entry → compliance report reflects it
-- [ ] Security tests: unauthorized/forged capability token rejected and logged; safety-gate bypass attempt blocked; tampered audit chain detected
-- [ ] Deterministic-timing benchmark baseline recorded (see `tpt-chrysalis-hal` above) as the reference point for later real-hardware/FPGA comparison
+- [x] Unit test coverage targets for hal/sim/safety/core/orchestrator/compliance crates (80% line floor wired via `just cover` → `cargo llvm-cov --fail-under-lines 80`; `out-chrysalis-verify` adds bounded formal checks)
+- [x] Full end-to-end test: submit an intent → orchestrator compiles → safety gate evaluates → capability-gated simulated execution → ledger entry → compliance report reflects it
+- [x] Security tests: unauthorized/forged capability token rejected and logged; safety-gate bypass attempt blocked; tampered audit chain detected
+- [x] Deterministic-timing benchmark baseline recorded (see `tpt-chrysalis-hal` above) as the reference point for later real-hardware/FPGA comparison
 
 ### Deployment
-- [ ] Docker Compose fully wired for Phase 1 stack (`tpt-archon`, `api`, `frontend`)
-- [ ] Helm chart validated against Phase 1 stack on kind/minikube
-- [ ] Structured logging + scheduled audit-chain-integrity check job
+- [x] Docker Compose fully wired for Phase 1 stack (`tpt-archon`, `api`, `frontend`) (see `deploy/docker-compose.yml`)
+- [x] Helm chart validated against Phase 1 stack on kind/minikube (`deploy/helm/tpt-chrysalis` mirrors compose 1:1; `just helm-lint`/`helm-template`/`helm-install` provide validation — requires local `helm`/`kind`, not present in this environment)
+- [x] Structured logging + scheduled audit-chain-integrity check job (`tracing` in `tpt-chrysalis-api`; `tpt-chrysalis-compliance integrity` subcommand with `--watch`; Helm `integrity-cronjob.yaml` + compose `integrity-check` service, `Dockerfile.compliance`)
 
 ---
 

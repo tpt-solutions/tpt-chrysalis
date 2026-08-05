@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "title": "Capability Token",
+  "description": "A bearer credential authorizing a specific physical action on a scoped resource with short expiry",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["token_id", "action_id", "scope", "subject", "issued_at_ms", "expires_at_ms", "signature"],
+  "properties": {
+    "token_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Globally unique token identifier"
+    },
+    "action_id": {
+      "type": "string",
+      "description": "Action identifier from the action registry (e.g., 'dispense', 'open_valve', 'set_temperature')"
+    },
+    "scope": {
+      "type": "string",
+      "description": "Resource scope (e.g., 'equipment/sim-liquid-handler-0/valve/v1')"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Actor identity (user, service, or AI agent) receiving the token"
+    },
+    "issued_at_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Unix timestamp (milliseconds) when token was issued"
+    },
+    "expires_at_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Unix timestamp (milliseconds) when token expires (short TTL, e.g., 5-60 seconds)"
+    },
+    "signature": {
+      "type": "string",
+      "description": "Cryptographic signature over the token payload (Ed25519 or equivalent)"
+    },
+    "nonce": {
+      "type": "string",
+      "description": "Single-use nonce to prevent replay within TTL"
+    },
+    "constraints": {
+      "type": "object",
+      "description": "Additional constraints (max volume, temperature range, allowed targets, etc.)",
+      "additionalProperties": true
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Free-form metadata (experiment ID, run ID, etc.)",
+      "additionalProperties": true,
+      "default": {}
+    }
+  }
+}

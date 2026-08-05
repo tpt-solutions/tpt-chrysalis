@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "title": "PDSG Edge",
+  "description": "A directed edge representing causality/flow between PDSG nodes (intent → actuator, actuator → sensor, etc.)",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["edge_id", "kind", "source_node_id", "target_node_id", "edge_kind", "created_at_ms"],
+  "properties": {
+    "edge_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Globally unique identifier for this edge"
+    },
+    "kind": {
+      "type": "string",
+      "const": "Edge",
+      "description": "Discriminant for PDSG edge type"
+    },
+    "source_node_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Source node ID (must exist in PDSG)"
+    },
+    "target_node_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Target node ID (must exist in PDSG)"
+    },
+    "edge_kind": {
+      "type": "string",
+      "enum": [
+        "IntentToActuator",
+        "ActuatorToSensor",
+        "SensorToIntent",
+        "ActuatorToActuator",
+        "IntentToIntent",
+        "DataFlow",
+        "ControlFlow",
+        "Causality"
+      ],
+      "description": "Semantic kind of relationship"
+    },
+    "created_at_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Unix timestamp (milliseconds) when this edge was created"
+    },
+    "safety_gate_passed": {
+      "type": "boolean",
+      "description": "Whether the safety gate evaluation passed for this edge (required for actuation edges)",
+      "default": false
+    },
+    "safety_check_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Reference to the safety gate check record that authorized this edge"
+    },
+    "capability_token_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Capability token that authorized the action this edge represents"
+    },
+    "parameters": {
+      "type": "object",
+      "description": "Edge-specific parameters (flow rate, duration, trigger conditions, etc.)",
+      "additionalProperties": true
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Free-form metadata",
+      "additionalProperties": true,
+      "default": {}
+    }
+  }
+}

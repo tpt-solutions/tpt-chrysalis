@@ -315,10 +315,27 @@ impl ApiState {
             req.temperature_milli_c,
         );
         let env = build_environment(req);
-        let report: ExecutionReport =
-            self.orchestrator
-                .submit_intent(&intent, &env, actor, now_ms)?;
-        Ok(ApiExecution::from(report))
+        match self.orchestrator.submit_intent(&intent, &env, actor, now_ms) {
+            Ok(report) => {
+                tracing::info!(
+                    intent = req.id.as_str(),
+                    actor,
+                    steps = report.step_count,
+                    accepted = report.accepted_steps.len(),
+                    "protocol executed through safety gate + audit ledger"
+                );
+                Ok(ApiExecution::from(report))
+            }
+            Err(e) => {
+                tracing::warn!(
+                    intent = req.id.as_str(),
+                    actor,
+                    error = %e,
+                    "protocol rejected at safety gate"
+                );
+                Err(e.into())
+            }
+        }
     }
 
     /// The PDSG subgraph rooted at a given node (e.g. an intent id).

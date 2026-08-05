@@ -1,0 +1,42 @@
+{{- if .Values.networkPolicies.enabled }}
+{{- range $i, $policy := .Values.networkPolicies.ingress }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "tpt-chrysalis.fullname" $ }}-ingress-{{ $i }}
+  labels:
+    {{- include "tpt-chrysalis.labels" $ | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        {{- toYaml $policy.from | nindent 10 }}
+      ports:
+        {{- toYaml $policy.ports | nindent 10 }}
+{{- end }}
+{{- range $i, $policy := .Values.networkPolicies.egress }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "tpt-chrysalis.fullname" $ }}-egress-{{ $i }}
+  labels:
+    {{- include "tpt-chrysalis.labels" $ | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        {{- toYaml $policy.to | nindent 10 }}
+      ports:
+        {{- toYaml $policy.ports | nindent 10 }}
+{{- end }}
+{{- end }}

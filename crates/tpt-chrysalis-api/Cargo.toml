@@ -19,3 +19,5 @@ tpt-chrysalis-compliance.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }

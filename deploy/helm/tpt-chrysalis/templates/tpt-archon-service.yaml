@@ -1,0 +1,27 @@
+{{- if .Values.tpt-archon.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tpt-chrysalis.fullname" . }}-tpt-archon
+  labels:
+    {{- include "tpt-chrysalis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tpt-archon
+spec:
+  type: ClusterIP
+  ports:
+    - name: kernel
+      port: {{ .Values.tpt-archon.service.kernel.port }}
+      targetPort: kernel
+      protocol: TCP
+    - name: storage
+      port: {{ .Values.tpt-archon.service.storage.port }}
+      targetPort: storage
+      protocol: TCP
+    - name: relational
+      port: {{ .Values.tpt-archon.service.relational.port }}
+      targetPort: relational
+      protocol: TCP
+  selector:
+    {{- include "tpt-chrysalis.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: tpt-archon
+{{- end }}

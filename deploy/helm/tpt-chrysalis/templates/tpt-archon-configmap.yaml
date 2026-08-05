@@ -1,0 +1,16 @@
+{{- if .Values.tpt-archon.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "tpt-chrysalis.fullname" . }}-tpt-archon-config
+  labels:
+    {{- include "tpt-chrysalis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tpt-archon
+data:
+  RUST_LOG: {{ .Values.tpt-archon.env.RUST_LOG | quote }}
+  ARCHON_KERNEL_BIND: {{ .Values.tpt-archon.env.ARCHON_KERNEL_BIND | quote }}
+  ARCHON_STORAGE_BIND: {{ .Values.tpt-archon.env.ARCHON_STORAGE_BIND | quote }}
+  ARCHON_RELATIONAL_BIND: {{ .Values.tpt-archon.env.ARCHON_RELATIONAL_BIND | quote }}
+  ARCHON_WAL_DIR: {{ .Values.tpt-archon.env.ARCHON_WAL_DIR | quote }}
+  ARCHON_DB_DIR: {{ .Values.tpt-archon.env.ARCHON_DB_DIR | quote }}
+{{- end }}

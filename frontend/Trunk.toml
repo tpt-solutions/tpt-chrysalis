@@ -1,0 +1,13 @@
+[build]
+target = "wasm32-unknown-unknown"
+dist = "dist"
+public-url = "/"
+index = "index.html"
+
+[serve]
+port = 8080
+addresses = ["0.0.0.0"]
+proxy-backend = "http://localhost:3000"
+
+[watch]
+ignore = ["dist/**", "target/**", "*.log"]

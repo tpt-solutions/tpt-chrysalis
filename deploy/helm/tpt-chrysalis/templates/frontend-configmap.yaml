@@ -1,0 +1,12 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "tpt-chrysalis.fullname" . }}-frontend-config
+  labels:
+    {{- include "tpt-chrysalis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+data:
+  TRUNK_PORT: {{ .Values.frontend.env.TRUNK_PORT | quote }}
+  API_BASE: {{ .Values.frontend.env.API_BASE | quote }}
+{{- end }}

@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "title": "ALCOA+ Compliance Report",
+  "description": "ALCOA+ compliance report over the hash-chained audit ledger",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["report_id", "generated_at_ms", "ledger_entry_count", "reported_entry_count", "last_hash_hex", "integrity", "criteria", "history", "core_compliant"],
+  "properties": {
+    "report_id": {
+      "type": "string",
+      "description": "Unique report identifier"
+    },
+    "generated_at_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Unix timestamp (milliseconds) when report was generated"
+    },
+    "actor_filter": {
+      "type": "string",
+      "description": "Optional actor filter applied to attributable history"
+    },
+    "ledger_entry_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total entries in the ledger"
+    },
+    "reported_entry_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Entries included in the attributable history (after filter)"
+    },
+    "last_hash_hex": {
+      "type": "string",
+      "pattern": "^[0-9a-f]+$",
+      "description": "Hex-encoded hash of the last ledger entry"
+    },
+    "integrity": {
+      "type": "object",
+      "required": ["is_intact", "entry_count", "broken_seqs"],
+      "properties": {
+        "is_intact": {
+          "type": "boolean",
+          "description": "Whether the hash chain verifies completely"
+        },
+        "entry_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of entries verified"
+        },
+        "broken_seqs": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "description": "Sequence numbers of broken links"
+        }
+      },
+      "description": "Ledger integrity verification result"
+    },
+    "criteria": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "name", "description", "satisfied", "evidence"],
+        "properties": {
+          "code": { "type": "string", "description": "Criterion code (A, L, C, O, A2, C+, C++, E+, Av+)" },
+          "name": { "type": "string", "description": "Criterion name" },
+          "description": { "type": "string", "description": "Criterion description" },
+          "satisfied": { "type": "boolean", "description": "Whether this criterion is satisfied" },
+          "evidence": { "type": "string", "description": "Evidence supporting the determination" }
+        }
+      },
+      "description": "All nine ALCOA+ criterion evaluations"
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["seq", "timestamp_ms", "actor", "action", "outcome", "scope", "prev_hash_hex", "hash_hex"],
+        "properties": {
+          "seq": { "type": "integer", "minimum": 0, "description": "Ledger sequence number" },
+          "timestamp_ms": { "type": "integer", "minimum": 0, "description": "Entry timestamp" },
+          "actor": { "type": "string", "description": "Actor identity" },
+          "action": { "type": "string", "description": "Canonical action description" },
+          "outcome": { "type": "string", "description": "Accepted or rejected with reason" },
+          "scope": { "type": "string", "description": "Capability token scope" },
+          "token_expires_at_ms": { "type": "integer", "minimum": 0, "description": "Token expiry timestamp" },
+          "prev_hash_hex": { "type": "string", "pattern": "^[0-9a-f]+$", "description": "Previous entry hash" },
+          "hash_hex": { "type": "string", "pattern": "^[0-9a-f]+$", "description": "This entry hash" }
+        }
+      },
+      "description": "Attributable history entries"
+    },
+    "core_compliant": {
+      "type": "boolean",
+      "description": "True when all five core criteria (A, L, C, O, A2) pass"
+    }
+  }
+}

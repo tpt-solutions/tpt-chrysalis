@@ -1,0 +1,61 @@
+# tpt-chrysalis-compliance Dockerfile - Multi-stage build
+# Carries the `tpt-chrysalis-compliance` CLI used by the scheduled
+# audit-chain-integrity check job (see deploy/helm .../integrity-cronjob.yaml).
+FROM rust:1.85-bookworm AS builder
+
+WORKDIR /workspace
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy workspace files for dependency caching
+COPY Cargo.toml Cargo.lock ./
+COPY crates/tpt-chrysalis-core/Cargo.toml crates/tpt-chrysalis-core/
+COPY crates/tpt-chrysalis-hal/Cargo.toml crates/tpt-chrysalis-hal/
+COPY crates/tpt-chrysalis-sim/Cargo.toml crates/tpt-chrysalis-sim/
+COPY crates/tpt-chrysalis-safety/Cargo.toml crates/tpt-chrysalis-safety/
+COPY crates/tpt-chrysalis-orchestrator/Cargo.toml crates/tpt-chrysalis-orchestrator/
+COPY crates/tpt-chrysalis-compliance/Cargo.toml crates/tpt-chrysalis-compliance/
+COPY crates/tpt-chrysalis-api/Cargo.toml crates/tpt-chrysalis-api/
+
+RUN mkdir -p crates/tpt-chrysalis-core/src \
+    crates/tpt-chrysalis-hal/src \
+    crates/tpt-chrysalis-sim/src \
+    crates/tpt-chrysalis-safety/src \
+    crates/tpt-chrysalis-orchestrator/src \
+    crates/tpt-chrysalis-compliance/src \
+    crates/tpt-chrysalis-api/src \
+    && echo "// dummy" > crates/tpt-chrysalis-core/src/lib.rs \
+    && echo "// dummy" > crates/tpt-chrysalis-hal/src/lib.rs \
+    && echo "// dummy" > crates/tpt-chrysalis-sim/src/lib.rs \
+    && echo "// dummy" > crates/tpt-chrysalis-safety/src/lib.rs \
+    && echo "// dummy" > crates/tpt-chrysalis-orchestrator/src/lib.rs \
+    && echo "// dummy" > crates/tpt-chrysalis-compliance/src/lib.rs \
+    && echo "// dummy" > crates/tpt-chrysalis-api/src/lib.rs \
+    && echo 'fn main() {}' > crates/tpt-chrysalis-api/src/main.rs
+
+RUN cargo build --release --workspace --exclude tpt-chrysalis-hal 2>/dev/null || true
+
+COPY crates/ crates/
+
+RUN cargo build --release --bin tpt-chrysalis-compliance
+
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=builder /workspace/target/release/tpt-chrysalis-compliance /app/tpt-chrysalis-compliance
+
+RUN useradd -r -s /bin/false -u 10002 integrityuser && \
+    chown -R integrityuser:integrityuser /app
+
+USER integrityuser
+
+ENTRYPOINT ["/app/tpt-chrysalis-compliance"]
+CMD ["integrity", "/data/ledger.bin", "--watch", "--interval-ms", "60000"]

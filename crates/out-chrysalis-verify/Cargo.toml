@@ -1,0 +1,24 @@
+[package]
+name = "out-chrysalis-verify"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+publish = false
+description = "Isolated formal-verification harness for tpt-chrysalis-hal (Phase 1, no_std critical path)"
+
+# Intentionally NOT a workspace member (see workspace Cargo.toml): it pulls the
+# verification toolchain (Kani / tpt-telos) only when explicitly verified, so
+# `cargo publish --dry-run` for the shippable HAL crate stays clean.
+[dependencies]
+tpt-chrysalis-hal = { path = "../tpt-chrysalis-hal" }
+
+[features]
+# Enables the Kani proof harnesses. Run with: `cargo kani` (Kani toolchain).
+kani = []
+
+[[test]]
+name = "bounded_checks"
+path = "tests/bounded_checks.rs"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "title": "Digital Intent Node",
+  "description": "A high-level biological intent (e.g., 'dose compound X at 10µM to well A3') that the orchestrator compiles to a protocol",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["node_id", "kind", "intent_type", "parameters", "status", "created_at_ms", "created_by"],
+  "properties": {
+    "node_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Globally unique identifier for this intent node"
+    },
+    "kind": {
+      "type": "string",
+      "const": "Intent",
+      "description": "Discriminant for PDSG node type"
+    },
+    "intent_type": {
+      "type": "string",
+      "enum": ["DoseReagent", "SetTemperature", "Incubate", "Wash", "ReadSensor", "Custom"],
+      "description": "Category of biological intent"
+    },
+    "parameters": {
+      "type": "object",
+      "description": "Intent-specific parameters (reagent, volume, target, temperature, duration, etc.)",
+      "additionalProperties": true
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Pending", "Compiling", "SafetyCheck", "Executing", "Completed", "Failed", "Aborted"],
+      "description": "Lifecycle state of this intent"
+    },
+    "created_at_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Unix timestamp (milliseconds) when this intent was created"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Actor identity (capability token subject) that created this intent"
+    },
+    "parent_intent_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Optional parent intent for hierarchical decomposition"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Free-form metadata for experiment tracking, tags, etc.",
+      "additionalProperties": true,
+      "default": {}
+    }
+  }
+}

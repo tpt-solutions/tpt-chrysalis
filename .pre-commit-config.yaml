@@ -1,0 +1,96 @@
+# tpt-chrysalis pre-commit hooks - Mirrors CI checks locally
+# Install: pre-commit install
+# Run: pre-commit run --all-files
+
+repos:
+  # Rust formatting
+  - repo: https://github.com/rust-lang/rustfmt
+    rev: v1.8.0
+    hooks:
+      - id: rustfmt
+        name: cargo fmt --check
+        entry: cargo fmt --all -- --check
+        language: system
+        types: [rust]
+        pass_filenames: false
+
+  # Rust clippy
+  - repo: https://github.com/rust-lang/clippy
+    rev: v1.85.0
+    hooks:
+      - id: clippy
+        name: cargo clippy -- -D warnings
+        entry: cargo clippy --workspace -- -D warnings
+        language: system
+        types: [rust]
+        pass_filenames: false
+
+  # Rust tests (quick)
+  - repo: local
+    hooks:
+      - id: cargo-test
+        name: cargo test --workspace
+        entry: cargo test --workspace -- --test-threads=4
+        language: system
+        types: [rust]
+        pass_filenames: false
+        stages: [commit]
+
+  # Cargo deny (security audit)
+  - repo: https://github.com/EmbarkStudios/cargo-deny
+    rev: 0.14.8
+    hooks:
+      - id: cargo-deny
+        name: cargo deny check
+        entry: cargo deny check
+        language: system
+        types: [rust]
+        pass_filenames: false
+        stages: [commit]
+
+  # JSON Schema validation
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.28.0
+    hooks:
+      - id: check-jsonschema
+        name: Validate JSON schemas
+        args: [--schemafile=schemas/POLICY.md]
+        files: schemas/**/*.json
+
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        name: yamllint
+        args: [-c, .yamllint.yaml]
+        files: \.(yaml|yml)$
+
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.42.0
+    hooks:
+      - id: markdownlint
+        name: markdownlint
+        args: [--config, .markdownlint.yaml]
+        files: \.(md|markdown)$
+
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        name: shellcheck
+        files: \.(sh|bash)$
+
+  # Trailing whitespace
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: detect-private-key

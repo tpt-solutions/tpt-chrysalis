@@ -1,0 +1,98 @@
+{{- if .Values.tpt-archon.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tpt-chrysalis.fullname" . }}-tpt-archon
+  labels:
+    {{- include "tpt-chrysalis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tpt-archon
+spec:
+  replicas: {{ .Values.tpt-archon.replicas }}
+  selector:
+    matchLabels:
+      {{- include "tpt-chrysalis.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: tpt-archon
+  template:
+    metadata:
+      labels:
+        {{- include "tpt-chrysalis.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: tpt-archon
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/tpt-archon-configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "tpt-chrysalis.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.tpt-archon.securityContext | nindent 8 }}
+      containers:
+        - name: tpt-archon
+          image: "{{ .Values.tpt-archon.image.repository }}:{{ .Values.tpt-archon.image.tag }}"
+          imagePullPolicy: {{ .Values.tpt-archon.image.pullPolicy }}
+          ports:
+            - name: kernel
+              containerPort: {{ .Values.tpt-archon.service.kernel.targetPort }}
+              protocol: TCP
+            - name: storage
+              containerPort: {{ .Values.tpt-archon.service.storage.targetPort }}
+              protocol: TCP
+            - name: relational
+              containerPort: {{ .Values.tpt-archon.service.relational.targetPort }}
+              protocol: TCP
+          env:
+            {{- range $key, $value := .Values.tpt-archon.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            - name: ARCHON_CAPABILITY_ROOT_KEY_FILE
+              value: /secrets/capability_root_key
+          envFrom:
+            - secretRef:
+                name: {{ include "tpt-chrysalis.capabilitySecretName" . }}
+                optional: true
+          volumeMounts:
+            - name: wal
+              mountPath: {{ .Values.tpt-archon.env.ARCHON_WAL_DIR }}
+            - name: db
+              mountPath: {{ .Values.tpt-archon.env.ARCHON_DB_DIR }}
+            - name: secrets
+              mountPath: /secrets
+              readOnly: true
+          resources:
+            {{- toYaml .Values.tpt-archon.resources | nindent 12 }}
+          livenessProbe:
+            {{- if .Values.tpt-archon.healthCheck.enabled }}
+            grpc:
+              port: {{ .Values.tpt-archon.service.kernel.targetPort }}
+            initialDelaySeconds: {{ .Values.tpt-archon.healthCheck.initialDelaySeconds }}
+            periodSeconds: {{ .Values.tpt-archon.healthCheck.periodSeconds }}
+            timeoutSeconds: {{ .Values.tpt-archon.healthCheck.timeoutSeconds }}
+            failureThreshold: {{ .Values.tpt-archon.healthCheck.failureThreshold }}
+            {{- end }}
+          readinessProbe:
+            {{- if .Values.tpt-archon.healthCheck.enabled }}
+            grpc:
+              port: {{ .Values.tpt-archon.service.kernel.targetPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            {{- end }}
+      volumes:
+        - name: wal
+          {{- if .Values.tpt-archon.persistence.wal.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "tpt-chrysalis.fullname" . }}-tpt-archon-wal
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: db
+          {{- if .Values.tpt-archon.persistence.db.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "tpt-chrysalis.fullname" . }}-tpt-archon-db
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: secrets
+          secret:
+            secretName: {{ include "tpt-chrysalis.capabilitySecretName" . }}
+            optional: true
+{{- end }}

@@ -1,0 +1,53 @@
+{{- if .Values.integrity.enabled }}
+# Scheduled audit-chain-integrity check job (TODO.md Phase 1, line 100).
+# Runs `tpt-chrysalis-compliance integrity` on a schedule; the CLI exits
+# non-zero on any broken hash-chain link, so a failed job (and its logs)
+# becomes the alerting trigger. The ledger volume is mounted read-only:
+# verification never mutates the chain.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "tpt-chrysalis.fullname" . }}-integrity
+  labels:
+    {{- include "tpt-chrysalis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: integrity
+spec:
+  schedule: {{ .Values.integrity.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 120
+      template:
+        metadata:
+          labels:
+            {{- include "tpt-chrysalis.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: integrity
+        spec:
+          serviceAccountName: {{ include "tpt-chrysalis.serviceAccountName" . }}
+          restartPolicy: Never
+          securityContext:
+            {{- toYaml .Values.integrity.securityContext | nindent 12 }}
+          containers:
+            - name: integrity
+              image: "{{ .Values.integrity.image.repository }}:{{ .Values.integrity.image.tag }}"
+              imagePullPolicy: {{ .Values.integrity.image.pullPolicy }}
+              args:
+                - "integrity"
+                - "/data/ledger.bin"
+                - "--watch"
+                - "--interval-ms"
+                - {{ .Values.integrity.intervalMs | quote }}
+              resources:
+                {{- toYaml .Values.integrity.resources | nindent 16 }}
+              volumeMounts:
+                - name: ledger
+                  mountPath: /data
+                  readOnly: true
+          volumes:
+            - name: ledger
+              persistentVolumeClaim:
+                claimName: {{ .Values.integrity.ledgerClaim | default (printf "%s-tpt-archon-wal" (include "tpt-chrysalis.fullname" .)) }}
+{{- end }}
