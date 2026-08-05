@@ -120,7 +120,7 @@ Focus: `tpt-chrysalis-organoid` and `tpt-chrysalis-vision`, per spec §8 Phase 2
   - [x] Audit coverage extended to organoid linking and vision pipeline outputs
 
 ### Frontend/API
-  - [ ] 3D visualization of the (simulated) Organ-on-a-Chip array synchronized with real-time sensor data, per spec §4 Layer 4
+  - [x] 3D visualization of the (simulated) Organ-on-a-Chip array synchronized with real-time sensor data, per spec §4 Layer 4
   - [x] API extended for organoid/vision queries
 
 ### Testing/validation
@@ -146,7 +146,7 @@ Focus: `tpt-chrysalis-active`, per spec §8 Phase 3 — first real integration o
 ### Testing/validation
 - [ ] Closed-loop demo: high-level goal in (e.g. "maximize tumor spheroid death, minimize cardiomyocyte toxicity") → `tpt-anima`-proposed protocol → `tpt-chrysalis-safety` verification → simulated execution → measured uncertainty reduction
 - [ ] Benchmark: reagent/time cost of the active-learning loop vs. a grid-search baseline on the same simulated search space, targeting the spec's 10x-100x reduction claim (§5C) — report actual measured ratio, not the target number, if they diverge
-- [ ] Security/safety regression suite re-run against AI-generated (not just hand-written) protocols specifically, since these are more likely to probe edge cases in the safety rule schema
+  - [x] Security/safety regression suite re-run against AI-generated (not just hand-written) protocols specifically, since these are more likely to probe edge cases in the safety rule schema
 
 ---
 

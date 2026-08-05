@@ -109,9 +109,11 @@ fn run_integrity(ledger: &AuditLedger, watch: bool, interval_ms: u64) -> ExitCod
         integrity.is_intact()
     };
     let mut intact = check();
-    while watch {
-        thread::sleep(Duration::from_millis(interval_ms.max(250)));
-        intact = check();
+    if watch {
+        loop {
+            thread::sleep(Duration::from_millis(interval_ms.max(250)));
+            intact = check();
+        }
     }
     if intact {
         ExitCode::SUCCESS

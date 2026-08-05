@@ -1,15 +1,21 @@
 //! Page components for each route
 
 use crate::{
-    api,
+    api, organoid_viz,
     components::{AlcoaCriterionRow, ErrorDisplay, LedgerEntryRow, LoadingSpinner, NodeCard, SensorStream},
     state::AppState,
     types::*,
 };
+use leptos::html::Canvas;
 use leptos::prelude::*;
 use leptos_router::hooks::use_location;
-use std::sync::Arc;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+use wasm_bindgen::JsCast;
+use wasm_bindgen::prelude::Closure;
 use wasm_bindgen_futures::spawn_local;
+use web_sys::window;
 
 #[component]
 pub fn Dashboard() -> impl IntoView {
@@ -206,8 +212,10 @@ pub fn PdsgExplorer() -> impl IntoView {
     let loading = state.loading();
     let error = state.error();
 
-    // Use Arc to share state across closures without moving (thread-safe)
-    let state_arc = Arc::new(state);
+    let on_select = {
+        let s = state.clone();
+        Callback::new(move |id: String| s.set_selected_node(Some(id)))
+    };
 
     view! {
         <ErrorDisplay error=error />
@@ -228,13 +236,11 @@ pub fn PdsgExplorer() -> impl IntoView {
                     <Show when=move || pdsg_snapshot.get().is_some() fallback=|| view! { <LoadingSpinner /> }>
                         {move || {
                             let snapshot = pdsg_snapshot.get().unwrap();
-                            let state = state_arc.clone();
-                            snapshot.nodes.into_iter().map(move |node| {
-                                let state_clone = state.clone();
+                            snapshot.nodes.into_iter().map(|node| {
                                 view! {
                                     <NodeCard
                                         node=node
-                                        on_click=Callback::new(move |id| state_clone.set_selected_node(Some(id)))
+                                        on_click=on_select.clone()
                                     />
                                 }
                             }).collect_view()
@@ -489,5 +495,176 @@ pub fn Settings() -> impl IntoView {
                 <p>"Sensor stream: /api/v1/ws/sensors (auto-connects)"</p>
             </section>
         </div>
+    }
+}
+
+#[component]
+pub fn OrganoidArray() -> impl IntoView {
+    let state = use_context::<AppState>().expect("AppState not provided");
+    let location = use_location();
+
+    let canvas_ref = NodeRef::<Canvas>::new();
+    let sensor_positions = RwSignal::new(Vec::<(String, Location3D)>::new());
+    let sensor_values = RwSignal::new(HashMap::<String, f64>::new());
+    let angle = RwSignal::new(0.0f64);
+    let stop = RwSignal::new(false);
+
+    // Fetch the PDSG snapshot to learn the (simulated) chip/sensor world positions.
+    let fetch_snapshot = {
+        let sensor_positions = sensor_positions.clone();
+        move || {
+            let sensor_positions = sensor_positions.clone();
+            spawn_local(async move {
+                if let Ok(snapshot) = api::fetch_pdsg_snapshot().await {
+                    let sensors: Vec<(String, Location3D)> = snapshot
+                        .nodes
+                        .iter()
+                        .filter_map(|n| match n {
+                            PdsgNode::Sensor(s) => Some((s.node_id.clone(), s.location.clone())),
+                            _ => None,
+                        })
+                        .collect();
+                    sensor_positions.set(sensors);
+                }
+            });
+        }
+    };
+    let fetch_snapshot_for_effect = fetch_snapshot.clone();
+    Effect::new(move |_| {
+        location.pathname.get();
+        fetch_snapshot_for_effect();
+    });
+
+    // Connect to the live sensor WebSocket; feed both the global state and the
+    // local per-sensor value map that drives the 3D colouring.
+    let state_ws = state.clone();
+    let sensor_values_ws = sensor_values.clone();
+    Effect::new(move |_| {
+        let state = state_ws.clone();
+        let sensor_values = sensor_values_ws.clone();
+        spawn_local(async move {
+            let state_for_ws = state.clone();
+            let sensor_values_for_ws = sensor_values.clone();
+            match api::connect_sensor_websocket(move |msg| {
+                if let Ok(reading) = serde_json::from_value::<SensorReading>(msg) {
+                    state_for_ws.add_sensor_reading(reading.clone());
+                    sensor_values_for_ws.update(|m| {
+                        m.insert(reading.sensor_id.clone(), reading.value);
+                    });
+                }
+            }) {
+                Ok(ws) => state.set_ws_connection(Some(ws)).await,
+                Err(e) => state.set_error(Some(format!("WebSocket error: {}", e.message))),
+            }
+        });
+    });
+
+    // Drive a requestAnimationFrame loop that re-projects and redraws the array,
+    // synced to the live sensor value map. Set up inline (not in an Effect) so the
+    // self-rescheduling closure can hold a non-`Send` `Rc` handle safely on wasm.
+    let canvas_loop = canvas_ref.clone();
+    let sensor_positions_loop = sensor_positions.clone();
+    let sensor_values_loop = sensor_values.clone();
+    let angle_loop = angle.clone();
+    let stop_loop = stop.clone();
+    let frame: Rc<RefCell<Option<Closure<dyn FnMut()>>>> = Rc::new(RefCell::new(None));
+    let g = frame.clone();
+    *frame.borrow_mut() = Some(Closure::wrap(Box::new(move || {
+        if stop_loop.get() {
+            return;
+        }
+        if let Some(canvas) = canvas_loop.get() {
+            if let Some(ctx) = organoid_viz::canvas_2d(&canvas) {
+                let positions = sensor_positions_loop.get();
+                let values = sensor_values_loop.get();
+                let nodes = organoid_viz::build_nodes(&positions, &values);
+                let next = angle_loop.get() + 0.008;
+                angle_loop.set(next);
+                let (lo, hi) = value_range(&values);
+                organoid_viz::render_scene(&ctx, &canvas, &nodes, next, lo, hi);
+            }
+        }
+        if let Some(win) = window() {
+            let _ = win.request_animation_frame(
+                g.borrow().as_ref().unwrap().as_ref().unchecked_ref(),
+            );
+        }
+    }) as Box<dyn FnMut()>));
+    if let Some(win) = window() {
+        let _ = win.request_animation_frame(
+            frame.borrow().as_ref().unwrap().as_ref().unchecked_ref(),
+        );
+    }
+    on_cleanup(move || stop.set(true));
+
+    let sensor_values_view = sensor_values.clone();
+    let legend_values = move || {
+        let values = sensor_values_view.get();
+        let mut out: Vec<(String, f64)> = values.into_iter().collect();
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        out
+    };
+
+    view! {
+        <ErrorDisplay error=state.error() />
+        <div class="organoid-view">
+            <header class="page-header">
+                <h1>"Organ-on-a-Chip Array"</h1>
+                <div class="header-actions">
+                    <button on:click=move |_| fetch_snapshot()>"Refresh Layout"</button>
+                </div>
+            </header>
+
+            <p class="organoid-hint">
+                "3D array of simulated OoC chips, rotated continuously and coloured by live sensor value (blue = low, red = high). Synced to the real-time sensor WebSocket."
+            </p>
+
+            <div class="organoid-layout">
+                <canvas
+                    node_ref=canvas_ref
+                    class="organoid-canvas"
+                    width="880"
+                    height="520"
+                ></canvas>
+
+                <aside class="organoid-legend">
+                    <h3>"Live Sensor Values"</h3>
+                    <Show when=move || !legend_values().is_empty() fallback=|| view! { <p>"Awaiting sensor data…"</p> }>
+                        <ul>
+                            {move || {
+                                legend_values()
+                                    .into_iter()
+                                    .map(|(id, v)| {
+                                        view! { <li><code>{id}</code> ": " {format!("{:.3}", v)}</li> }
+                                    })
+                                    .collect_view()
+                            }}
+                        </ul>
+                    </Show>
+                </aside>
+            </div>
+        </div>
+    }
+}
+
+fn value_range(values: &HashMap<String, f64>) -> (f64, f64) {
+    if values.is_empty() {
+        return (0.0, 1.0);
+    }
+    let mut iter = values.values();
+    let first = *iter.next().unwrap();
+    let (mut lo, mut hi) = (first, first);
+    for v in iter {
+        if *v < lo {
+            lo = *v;
+        }
+        if *v > hi {
+            hi = *v;
+        }
+    }
+    if (hi - lo).abs() < 1e-9 {
+        (lo - 1.0, hi + 1.0)
+    } else {
+        (lo, hi)
     }
 }
