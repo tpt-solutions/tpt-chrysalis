@@ -50,6 +50,30 @@ pub fn default_gate() -> SafetyGate {
         .clone()
 }
 
+/// Device command kinds the API recognises. Recognised is not allowed. See
+/// [`APPROVED_DEVICE_COMMANDS`].
+pub const DEVICE_COMMAND_KINDS: &[&str] = &["heal_pathway", "sprout_conduit", "reinforce_tendon"];
+
+/// Device command kinds that may execute. This list is empty.
+///
+/// The safety gate allows any step that no rule matches (`gate.rs`, the
+/// `Allow` at the end of `evaluate`). So a command kind must not run until it
+/// has its own gate rule and its own HAL mapping. Add a kind here only together
+/// with both, after safety review.
+pub const APPROVED_DEVICE_COMMANDS: &[&str] = &[];
+
+/// `POST /api/v1/device-commands` body. Parameters use the device's own units.
+#[derive(Debug, Clone, Deserialize)]
+pub struct DeviceCommandRequest {
+    pub id: String,
+    pub device: String,
+    pub kind: String,
+    #[serde(default)]
+    pub parameters: BTreeMap<String, f64>,
+    #[serde(default)]
+    pub environment: BTreeMap<String, f64>,
+}
+
 /// Why an API operation failed.
 #[derive(Debug)]
 pub enum ApiError {
@@ -392,6 +416,39 @@ impl ApiState {
                 Err(e.into())
             }
         }
+    }
+
+    /// Checks a device command, and refuses it unless its kind is approved.
+    ///
+    /// Nothing is passed to the orchestrator. A kind that is approved but not
+    /// yet mapped to the HAL is also refused. Because `APPROVED_DEVICE_COMMANDS`
+    /// is empty, this never succeeds yet, so the result is `Infallible`.
+    pub fn submit_device_command(
+        &self,
+        req: &DeviceCommandRequest,
+        actor: &str,
+    ) -> Result<core::convert::Infallible, ApiError> {
+        if req.id.is_empty() || req.device.is_empty() {
+            return Err(ApiError::BadRequest("id and device are required".into()));
+        }
+        let kind = req.kind.as_str();
+        if !DEVICE_COMMAND_KINDS.contains(&kind) {
+            return Err(ApiError::BadRequest(format!("unknown device command kind `{kind}`")));
+        }
+        if !APPROVED_DEVICE_COMMANDS.contains(&kind) {
+            tracing::warn!(
+                command = req.id.as_str(),
+                kind,
+                actor,
+                "device command refused: no approved safety rule"
+            );
+            return Err(ApiError::SafetyBlocked(format!(
+                "no approved safety rule for `{kind}`; command not executed"
+            )));
+        }
+        Err(ApiError::BadRequest(format!(
+            "`{kind}` is approved but not yet mapped to the HAL; command not executed"
+        )))
     }
 
     /// The PDSG subgraph rooted at a given node (e.g. an intent id).

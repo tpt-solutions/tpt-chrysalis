@@ -12,7 +12,7 @@ use alloc::vec::Vec;
 use serde::Serialize;
 use tpt_chrysalis_core::ActionId;
 
-use crate::api::{ApiError, ApiState, IssueTokenRequest, SubmitIntentRequest};
+use crate::api::{ApiError, ApiState, DeviceCommandRequest, IssueTokenRequest, SubmitIntentRequest};
 use crate::tokens::ApiAuthError;
 
 /// One parsed HTTP request.
@@ -110,6 +110,7 @@ pub fn handle_request(state: &mut ApiState, req: &HttpRequest, now_ms: u64) -> H
             HttpResponse::json(200, &s.compliance_report(actor.as_deref(), now_ms))
         }),
         ("POST", "/api/v1/intents") => handle_submit_intent(state, req, now_ms),
+        ("POST", "/api/v1/device-commands") => handle_device_command(state, req, now_ms),
         ("POST", "/api/v1/organoid/verify") => handle_organoid_verify(state, req, now_ms),
         ("POST", "/api/v1/organoid/screen") => handle_organoid_screen(state, req, now_ms),
         ("POST", "/api/v1/vision/capture") => handle_vision_capture(state, req, now_ms),
@@ -141,6 +142,27 @@ fn handle_submit_intent(state: &mut ApiState, req: &HttpRequest, now_ms: u64) ->
     };
     match state.submit_intent(&parsed, &actor, now_ms) {
         Ok(exec) => HttpResponse::json(201, &exec),
+        Err(e) => api_error_response(e),
+    }
+}
+
+/// Device commands are submitted under the same action as protocols. They are
+/// refused at the API boundary until their kind is approved (see `api.rs`).
+fn handle_device_command(state: &mut ApiState, req: &HttpRequest, now_ms: u64) -> HttpResponse {
+    let bearer = match extract_bearer(req) {
+        Some(b) => b.to_string(),
+        None => return HttpResponse::error(401, auth_error_message(ApiAuthError::Missing)),
+    };
+    let actor = match state.authenticate(&bearer, ActionId::SubmitProtocol, now_ms) {
+        Ok(a) => a.to_string(),
+        Err(e) => return HttpResponse::error(401, auth_error_message(e)),
+    };
+    let parsed: DeviceCommandRequest = match serde_json::from_slice(&req.body) {
+        Ok(v) => v,
+        Err(e) => return HttpResponse::error(400, &format!("malformed body: {e}")),
+    };
+    match state.submit_device_command(&parsed, &actor) {
+        Ok(never) => match never {},
         Err(e) => api_error_response(e),
     }
 }
@@ -315,6 +337,53 @@ mod tests {
         state
             .issue_token(actor, action, 60_000, 1_000)
             .token
+    }
+
+    fn device_body(kind: &str) -> String {
+        serde_json::json!({ "id": "dc1", "device": "hand-0", "kind": kind }).to_string()
+    }
+
+    #[test]
+    fn device_commands_are_refused_while_no_kind_is_approved() {
+        let mut s = state();
+        let bearer = bearer_for(&mut s, ActionId::SubmitProtocol, "alice");
+        for kind in ["heal_pathway", "sprout_conduit", "reinforce_tendon"] {
+            let req = request("POST", "/api/v1/device-commands", Some(&bearer), &device_body(kind));
+            let resp = handle_request(&mut s, &req, 1_000);
+            assert_eq!(resp.status, 422, "{kind} must be refused");
+            let text = String::from_utf8_lossy(&resp.body);
+            assert!(text.contains("no approved safety rule"), "{text}");
+        }
+    }
+
+    #[test]
+    fn device_command_needs_a_token() {
+        let mut s = state();
+        let req = request("POST", "/api/v1/device-commands", None, &device_body("heal_pathway"));
+        assert_eq!(handle_request(&mut s, &req, 1_000).status, 401);
+    }
+
+    #[test]
+    fn unknown_device_command_kind_is_a_bad_request() {
+        let mut s = state();
+        let bearer = bearer_for(&mut s, ActionId::SubmitProtocol, "alice");
+        let req = request("POST", "/api/v1/device-commands", Some(&bearer), &device_body("dispense_everything"));
+        assert_eq!(handle_request(&mut s, &req, 1_000).status, 400);
+    }
+
+    #[test]
+    fn device_command_does_not_reach_the_intent_path() {
+        // The refusal happens before submit_intent. Nothing is recorded in the PDSG.
+        let mut s = state();
+        let bearer = bearer_for(&mut s, ActionId::SubmitProtocol, "alice");
+        let before = s.pdsg_snapshot().expect("snapshot");
+        let req = request("POST", "/api/v1/device-commands", Some(&bearer), &device_body("heal_pathway"));
+        assert_eq!(handle_request(&mut s, &req, 1_000).status, 422);
+        let after = s.pdsg_snapshot().expect("snapshot");
+        assert_eq!(
+            serde_json::to_value(&before).unwrap(),
+            serde_json::to_value(&after).unwrap()
+        );
     }
 
     #[test]
