@@ -31,6 +31,13 @@ pub enum PhysicalAction {
     ReadSensor {
         channel: String,
     },
+    /// A device command that was refused before reaching the HAL. It is recorded
+    /// so that refusals are auditable. No capability maps to it, so the gateway
+    /// refuses it (`GatewayError::UnknownAction`) and it never executes.
+    DeviceCommand {
+        kind: String,
+        device: String,
+    },
 }
 
 /// What happened to a command at the enforcement point.

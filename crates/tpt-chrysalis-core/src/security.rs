@@ -79,6 +79,8 @@ impl ActionId {
             PhysicalAction::SetValve { .. } => Some(ActionId::OpenValve),
             PhysicalAction::SetTemperature { .. } => Some(ActionId::SetTemperature),
             PhysicalAction::ReadSensor { .. } => Some(ActionId::ReadSensor),
+            // No capability covers a device command. Callers treat None as a refusal.
+            PhysicalAction::DeviceCommand { .. } => None,
         }
     }
 

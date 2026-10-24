@@ -213,6 +213,9 @@ pub fn render_action(action: &PhysicalAction) -> String {
             format!("set temperature {}c", setpoint_milli_c / 1_000)
         }
         PhysicalAction::ReadSensor { channel } => format!("read sensor {channel}"),
+        PhysicalAction::DeviceCommand { kind, device } => {
+            format!("device command {kind} on {device} (refused)")
+        }
     }
 }
 

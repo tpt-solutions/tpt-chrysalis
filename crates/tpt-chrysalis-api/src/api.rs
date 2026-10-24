@@ -420,13 +420,17 @@ impl ApiState {
 
     /// Checks a device command, and refuses it unless its kind is approved.
     ///
-    /// Nothing is passed to the orchestrator. A kind that is approved but not
-    /// yet mapped to the HAL is also refused. Because `APPROVED_DEVICE_COMMANDS`
-    /// is empty, this never succeeds yet, so the result is `Infallible`.
+    /// A refused command of a recognised kind is written to the audit ledger
+    /// before the error is returned. Nothing is passed to the orchestrator. A
+    /// kind that is approved but not yet mapped to the HAL is also refused.
+    /// Because `APPROVED_DEVICE_COMMANDS` is empty, this never succeeds yet, so
+    /// the result is `Infallible`. Unknown kinds are not recorded, because their
+    /// strings come straight from the request.
     pub fn submit_device_command(
-        &self,
+        &mut self,
         req: &DeviceCommandRequest,
         actor: &str,
+        now_ms: u64,
     ) -> Result<core::convert::Infallible, ApiError> {
         if req.id.is_empty() || req.device.is_empty() {
             return Err(ApiError::BadRequest("id and device are required".into()));
@@ -436,12 +440,22 @@ impl ApiState {
             return Err(ApiError::BadRequest(format!("unknown device command kind `{kind}`")));
         }
         if !APPROVED_DEVICE_COMMANDS.contains(&kind) {
-            tracing::warn!(
-                command = req.id.as_str(),
-                kind,
+            let reason = "no approved safety rule";
+            let scope = self.scope().to_string();
+            self.orchestrator.ledger_mut().append(
+                now_ms,
                 actor,
-                "device command refused: no approved safety rule"
+                PhysicalAction::DeviceCommand {
+                    kind: kind.to_string(),
+                    device: req.device.clone(),
+                },
+                tpt_chrysalis_core::ledger::AuditOutcome::Rejected {
+                    reason: reason.to_string(),
+                },
+                &scope,
+                None,
             );
+            tracing::warn!(command = req.id.as_str(), kind, actor, "device command refused");
             return Err(ApiError::SafetyBlocked(format!(
                 "no approved safety rule for `{kind}`; command not executed"
             )));
@@ -449,6 +463,11 @@ impl ApiState {
         Err(ApiError::BadRequest(format!(
             "`{kind}` is approved but not yet mapped to the HAL; command not executed"
         )))
+    }
+
+    /// Number of entries in the audit ledger.
+    pub fn ledger_len(&self) -> usize {
+        self.orchestrator.ledger().len()
     }
 
     /// The PDSG subgraph rooted at a given node (e.g. an intent id).

@@ -365,6 +365,12 @@ where
         &self.ledger
     }
 
+    /// Mutable access to the audit ledger, for records written outside a
+    /// protocol run, such as refused device commands.
+    pub fn ledger_mut(&mut self) -> &mut AuditLedger {
+        &mut self.ledger
+    }
+
     /// The PDSG store (for subgraph queries / export).
     pub fn store(&mut self) -> &mut PdsgStore {
         &mut self.store

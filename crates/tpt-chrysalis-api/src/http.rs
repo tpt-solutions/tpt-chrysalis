@@ -161,7 +161,7 @@ fn handle_device_command(state: &mut ApiState, req: &HttpRequest, now_ms: u64) -
         Ok(v) => v,
         Err(e) => return HttpResponse::error(400, &format!("malformed body: {e}")),
     };
-    match state.submit_device_command(&parsed, &actor) {
+    match state.submit_device_command(&parsed, &actor, now_ms) {
         Ok(never) => match never {},
         Err(e) => api_error_response(e),
     }
@@ -369,6 +369,20 @@ mod tests {
         let bearer = bearer_for(&mut s, ActionId::SubmitProtocol, "alice");
         let req = request("POST", "/api/v1/device-commands", Some(&bearer), &device_body("dispense_everything"));
         assert_eq!(handle_request(&mut s, &req, 1_000).status, 400);
+    }
+
+    #[test]
+    fn refused_device_command_is_written_to_the_ledger() {
+        let mut s = state();
+        let bearer = bearer_for(&mut s, ActionId::SubmitProtocol, "alice");
+        let before = s.ledger_len();
+        let req = request("POST", "/api/v1/device-commands", Some(&bearer), &device_body("heal_pathway"));
+        assert_eq!(handle_request(&mut s, &req, 1_000).status, 422);
+        assert_eq!(s.ledger_len(), before + 1, "the refusal must be recorded");
+        // An unknown kind is a 400 and is not recorded.
+        let req = request("POST", "/api/v1/device-commands", Some(&bearer), &device_body("nope"));
+        assert_eq!(handle_request(&mut s, &req, 1_000).status, 400);
+        assert_eq!(s.ledger_len(), before + 1);
     }
 
     #[test]
